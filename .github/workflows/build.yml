@@ -22,12 +22,12 @@ jobs:
     - uses: actions/checkout@v2
     - name: Configure CMake
       run: |
-        cmake -B ${{github.workspace}}/build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}\
+        cmake -B build -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}\
          -DCMAKE_EXPORT_COMPILE_COMMANDS=TRUE -DCMAKE_C_COMPILER=${{env.BUILD_CC}} -DCMAKE_CXX_COMPILER=${{env.BUILD_CXX}}\
          -G Ninja
     - name: Build with CMake
       run: |
-        cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}} --target all
+        cmake --build build --config ${{env.BUILD_TYPE}} --target all
 
     - name: Upload compiler binary
       uses: actions/upload-artifact@v3
