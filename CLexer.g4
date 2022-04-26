@@ -38,20 +38,10 @@ void myBarLexerAction() { /* do something*/ };
 // Appears in line with the other class member definitions in the cpp file.
 @lexer::definitions {/* lexer definitions section */}
 
-channels { CommentsChannel, DirectiveChannel }
-
-tokens {
-	DUMMY
-}
-
-Return: 'return';
-Continue: 'continue';
+NEWLINE : [\r\n]+ ;
 
 INT: Digit+;
 Digit: [0-9];
-
-ID: LETTER (LETTER | '0'..'9')*;
-fragment LETTER : [a-zA-Z\u0080-\u{10FFFF}];
 
 LessThan: '<';
 GreaterThan:  '>';
@@ -63,27 +53,6 @@ Semicolon: ';';
 Plus: '+';
 Minus: '-';
 Star: '*';
+Div: '/' ;
 OpenPar: '(';
 ClosePar: ')';
-OpenCurly: '{' -> pushMode(Mode1);
-CloseCurly: '}' -> popMode;
-QuestionMark: '?';
-Comma: ',' -> skip;
-Dollar: '$' -> more, mode(Mode1);
-Ampersand: '&' -> type(DUMMY);
-
-String: '"' .*? '"';
-Foo: {canTestFoo()}? 'foo' {isItFoo()}? { myFooLexerAction(); };
-Bar: 'bar' {isItBar()}? { myBarLexerAction(); };
-Any: Foo Dot Bar? DotDot Baz;
-
-Comment : '#' ~[\r\n]* '\r'? '\n' -> channel(CommentsChannel);
-WS: [ \t\r\n]+ -> channel(99);
-
-fragment Baz: 'Baz';
-
-mode Mode1;
-Dot: '.';
-
-mode Mode2;
-DotDot: '..';

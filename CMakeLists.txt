@@ -19,7 +19,9 @@ ANTLR_TARGET(CLexer CLexer.g4 LEXER
 ANTLR_TARGET(CParser CParser.g4 PARSER
     PACKAGE antlrcpptest
     DEPENDS_ANTLR CLexer
-    COMPILE_FLAGS -lib ${ANTLR_CLexer_OUTPUT_DIR})
+    COMPILE_FLAGS -lib ${ANTLR_CLexer_OUTPUT_DIR}
+    VISITOR
+    LISTENER)
 
 include_directories(${ANTLR_CLexer_OUTPUT_DIR})
 include_directories(${ANTLR_CParser_OUTPUT_DIR})
