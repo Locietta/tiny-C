@@ -19,6 +19,9 @@ jobs:
     container: locietta/loia-dev-base:antlr4
 
     steps:
+    - name: Trust directories
+      run: git config --global --add safe.directory * # v2.36.0 or later
+      
     - uses: actions/checkout@v2
     - name: Configure CMake
       run: |
