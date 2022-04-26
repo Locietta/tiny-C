@@ -33,3 +33,9 @@ add_executable(tinycc main.cpp
     ${ANTLR_CParser_CXX_OUTPUTS}
 )
 target_link_libraries(tinycc PRIVATE antlr4_static)
+add_custom_command( # install hooks
+    TARGET tinycc
+    PRE_BUILD 
+    COMMAND git config core.hooksPath ${PROJECT_SOURCE_DIR}/.github/.hooks
+    VERBATIM
+)
