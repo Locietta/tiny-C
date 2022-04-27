@@ -13,15 +13,14 @@
 
 #include "CLexer.h"
 #include "CParser.h"
-#include "CParserBaseListener.h"
-#include "CParserBaseVisitor.h"
 #include "antlr4-runtime.h"
+#include "my_visitor.h"
 
 using namespace antlrcpp;
 using namespace antlr4;
 
 int main(int, const char **) {
-    ANTLRInputStream input("1+2*3");
+    ANTLRInputStream input("1+2-5+100");
     CLexer lexer(&input);
     CommonTokenStream tokens(&lexer);
 
@@ -35,8 +34,8 @@ int main(int, const char **) {
 
     // std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
 
-    CParserBaseVisitor visitor;
-    visitor.visitProg(parser.prog());
+    my_visitor visitor;
+    std::cout << std::any_cast<int>(visitor.visit(tree)) << std::endl;
 
     return 0;
 }

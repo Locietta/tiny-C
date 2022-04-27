@@ -1,6 +1,5 @@
 build
 *.o
-.vscode
 
 # antlr4 
 C*Listener.{h,cpp}

@@ -70,8 +70,6 @@ void doAfter() {}
 // Actual grammar start.
 prog: expr EOF ;
 
-expr: expr (Star | Div) expr    # factor
-    | expr (Plus | Minus) expr  # term
-    | INT                       # num
-    | OpenPar expr ClosePar     # paren
+expr: expr (Plus | Minus) INT    # AddSub
+    | INT                       # Num
     ;
