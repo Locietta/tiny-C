@@ -1,7 +1,9 @@
-// ArithmeticLexer.g4
+
 lexer grammar CLexer;
 
-options { language=Cpp; }
+options {
+	language = Cpp;
+}
 
 // These are all supported lexer sections:
 
@@ -40,211 +42,136 @@ void myBarLexerAction() { /* do something*/ };
 
 // ============================ Actual Lexer ===================================
 // --------------------------- Data Type -------------------------
-Char : 'char';
-Double : 'double';
-Int : 'int';
-Long : 'long';
-Float : 'float';
-Short : 'short';
-Void : 'void';
-Struct : 'struct';
+Char: 'char';
+Double: 'double';
+Int: 'int';
+Long: 'long';
+Float: 'float';
+Short: 'short';
+Void: 'void';
+Struct: 'struct';
 
 // ---------------------------- Control Flow ----------------------------
-Break : 'break';
-Case : 'case';
-Continue : 'continue';
-Default : 'default';
-Do : 'do';
-Else : 'else';
-For : 'for';
-If : 'if';
-Return : 'return';
-Switch : 'switch';
-While : 'while';
+Break: 'break';
+Case: 'case';
+Continue: 'continue';
+Default: 'default';
+Do: 'do';
+Else: 'else';
+For: 'for';
+If: 'if';
+Return: 'return';
+Switch: 'switch';
+While: 'while';
 
 // ------------------------------ operator ----------------------------
-Sizeof : 'sizeof';
+Sizeof: 'sizeof';
 
-LeftParen : '(';
-RightParen : ')';
-LeftBracket : '[';
-RightBracket : ']';
-LeftBrace : '{';
-RightBrace : '}';
+LeftParen: '(';
+RightParen: ')';
+LeftBracket: '[';
+RightBracket: ']';
+LeftBrace: '{';
+RightBrace: '}';
 
-Less : '<';
-LessEqual : '<=';
-Greater : '>';
-GreaterEqual : '>=';
+Less: '<';
+LessEqual: '<=';
+Greater: '>';
+GreaterEqual: '>=';
 
-Plus : '+';
-PlusPlus : '++';
-Minus : '-';
-MinusMinus : '--';
-Mul : '*';
-Div : '/';
-Mod : '%';
+Plus: '+';
+PlusPlus: '++';
+Minus: '-';
+MinusMinus: '--';
+Mul: '*';
+Div: '/';
+Mod: '%';
 
-AndAnd : '&&';
-OrOr : '||';
-Not : '!';
+AndAnd: '&&';
+OrOr: '||';
+Not: '!';
 
-Question : '?';
-Colon : ':';
-Semi : ';';
-Comma : ',';
+Question: '?';
+Colon: ':';
+Semi: ';';
+Comma: ',';
 
-Assign : '=';
+Assign: '=';
 // '*=' | '/=' | '%=' | '+=' | '-=' | '<<=' | '>>=' | '&=' | '^=' | '|='
-MulAssign : '*=';
-DivAssign : '/=';
-ModAssign : '%=';
-PlusAssign : '+=';
-MinusAssign : '-=';
+MulAssign: '*=';
+DivAssign: '/=';
+ModAssign: '%=';
+PlusAssign: '+=';
+MinusAssign: '-=';
 
-Equal : '==';
-NotEqual : '!=';
+Equal: '==';
+NotEqual: '!=';
 
-Dot : '.';
-
+Dot: '.';
 
 // ------------------------ ID: name of variables ------------------------
-Identifier
-    :   IdentifierNondigit
-        (   IdentifierNondigit
-        |   Digit
-        )*
-    ;
+Identifier: IdentifierNondigit ( IdentifierNondigit | Digit)*;
 
-fragment
-IdentifierNondigit
-    :   Nondigit
-    ;
+fragment IdentifierNondigit: Nondigit;
 
-fragment
-Nondigit
-    :   [a-zA-Z_]
-    ;
+fragment Nondigit: [a-zA-Z_];
 
-fragment
-Digit
-    :   [0-9]
-    ;
+fragment Digit: [0-9];
 
-Constant
-    :   IntegerConstant
-    |   FloatingConstant
-    |   CharacterConstant
-    ;
+Constant:
+	IntegerConstant
+	| FloatingConstant
+	| CharacterConstant;
 
-fragment
-IntegerConstant
-    :   DecimalConstant
-    ;
+fragment IntegerConstant: DecimalConstant;
 
-fragment
-DecimalConstant
-    :   NonzeroDigit Digit*
-    ;
+fragment DecimalConstant: NonzeroDigit Digit*;
 
-fragment
-NonzeroDigit
-    :   [1-9]
-    ;
+fragment NonzeroDigit: [1-9];
 
-fragment
-FloatingConstant
-    :   DecimalFloatingConstant
-    ;
+fragment FloatingConstant: DecimalFloatingConstant;
 
-fragment
-DecimalFloatingConstant
-    :   FractionalConstant
-    ;
+fragment DecimalFloatingConstant: FractionalConstant;
 
-fragment
-FractionalConstant
-    :   DigitSequence? '.' DigitSequence
-    |   DigitSequence '.'
-    ;
+fragment FractionalConstant:
+	DigitSequence? '.' DigitSequence
+	| DigitSequence '.';
 
-fragment
-Sign
-    :   [+-]
-    ;
+fragment Sign: [+-];
 
-DigitSequence
-    :   Digit+
-    ;
+DigitSequence: Digit+;
 
-fragment
-CharacterConstant
-    :   '\'' CCharSequence '\''
-    ;
+fragment CharacterConstant: '\'' CCharSequence '\'';
 
-fragment
-CCharSequence
-    :   CChar+
-    ;
+fragment CCharSequence: CChar+;
 
-fragment
-CChar
-    :   ~['\\\r\n]
-    |   SimpleEscapeSequence
-    ;
+fragment CChar: ~['\\\r\n] | SimpleEscapeSequence;
 
-fragment
-SimpleEscapeSequence
-    :   '\\' ['"?abfnrtv\\]
-    ;
+fragment SimpleEscapeSequence: '\\' ['"?abfnrtv\\];
 
-StringLiteral
-    :   '"' SCharSequence? '"'
-    ;
+StringLiteral: '"' SCharSequence? '"';
 
-fragment
-SCharSequence
-    :   SChar+
-    ;
+fragment SCharSequence: SChar+;
 
-fragment
-SChar
-    :   ~["\\\r\n]
-    |   SimpleEscapeSequence
-    |   '\\\n'   // Added line
-    |   '\\\r\n' // Added line
-    ;
+fragment SChar:
+	~["\\\r\n]
+	| SimpleEscapeSequence
+	| '\\\n' // Added line
+	| '\\\r\n' ; // Added line
 
-// ComplexDefine
-//     :   '#' Whitespace? 'define'  ~[#\r\n]*
-//         -> skip
-//     ;
+// ComplexDefine : '#' Whitespace? 'define' ~[#\r\n]* -> skip ;
 
-IncludeDirective
-    :   '#' Whitespace? 'include' Whitespace? (('"' ~[\r\n]* '"') | ('<' ~[\r\n]* '>' )) Whitespace? Newline
-        -> skip
-    ;
+IncludeDirective:
+	'#' Whitespace? 'include' Whitespace? (
+		('"' ~[\r\n]* '"')
+		| ('<' ~[\r\n]* '>')
+	) Whitespace? Newline -> skip;
 
-Whitespace
-    :   [ \t]+
-        -> skip
-    ;
+Whitespace: [ \t]+ -> skip;
 
-Newline
-    :   (   '\r' '\n'?
-        |   '\n'
-        )
-        -> skip
-    ;
+Newline: ( '\r' '\n'? | '\n') -> skip;
 
-BlockComment
-    :   '/*' .*? '*/'
-        -> skip
-    ;
+BlockComment: '/*' .*? '*/' -> skip;
 
-LineComment
-    :   '//' ~[\r\n]*
-        -> skip
-    ;
-
+LineComment: '//' ~[\r\n]* -> skip;
 
