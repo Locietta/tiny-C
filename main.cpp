@@ -13,11 +13,11 @@
 
 #include "CLexer.h"
 #include "CParser.h"
-#include "CParserBaseVisitor.h"
 #include "CParserBaseListener.h"
+#include "CParserBaseVisitor.h"
 #include "antlr4-runtime.h"
 
-using namespace antlrcpptest;
+using namespace antlrcpp;
 using namespace antlr4;
 
 int main(int, const char **) {

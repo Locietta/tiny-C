@@ -14,10 +14,10 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
 ANTLR_TARGET(CLexer CLexer.g4 LEXER
-    PACKAGE antlrcpptest)
+    PACKAGE antlrcpp)
 
 ANTLR_TARGET(CParser CParser.g4 PARSER
-    PACKAGE antlrcpptest
+    PACKAGE antlrcpp
     DEPENDS_ANTLR CLexer
     COMPILE_FLAGS -lib ${ANTLR_CLexer_OUTPUT_DIR}
     VISITOR
