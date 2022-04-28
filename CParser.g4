@@ -75,9 +75,14 @@ decl_list: decl_list decl | decl;
 
 decl: var_decl | func_decl;
 
+simple_var_decl:
+	Identifier (Assign Constant)?
+	| Identifier LeftBracket Constant RightBracket (Assign init_list)?;
+
+init_list: LeftBrace (Constant (Comma Constant)*)? RightBrace;
+
 var_decl:
-	type_spec Identifier Semi
-	| type_spec Identifier LeftBracket IntegerConstant RightBracket Semi;
+	type_spec simple_var_decl (Comma simple_var_decl)* Semi;
 
 type_spec:
 	Char
@@ -90,8 +95,7 @@ type_spec:
 	| Struct Identifier; // struct type
 
 func_decl:
-	type_spec Identifier LeftParen params RightParen
-	| comp_stmt;
+	type_spec Identifier LeftParen params RightParen comp_stmt;
 
 params: param_list | (Void)?;
 

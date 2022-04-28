@@ -123,7 +123,7 @@ Constant:
 	| FloatingConstant
 	| CharacterConstant;
 
-IntegerConstant: DecimalConstant;
+fragment IntegerConstant: DecimalConstant;
 
 fragment DecimalConstant: NonzeroDigit Digit*;
 

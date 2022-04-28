@@ -1,6 +1,9 @@
 build
 *.o
 
+*.png
+
+
 # antlr4 
 C*Listener.{h,cpp}
 C*Lexer.{h,cpp}
