@@ -10,17 +10,25 @@
 //  Created by Mike Lischke on 13.03.16.
 //
 #include <iostream>
+#include <memory>
 
 #include "CLexer.h"
 #include "CParser.h"
 #include "antlr4-runtime.h"
-#include "my_visitor.h"
+// #include "my_visitor.h"
 
 using namespace antlrcpp;
 using namespace antlr4;
 
-int main(int, const char **) {
-    ANTLRInputStream input("1+2-5+100");
+int main(int argc, const char *argv[]) {
+    std::istream *is = nullptr;
+    if (argc > 1) {
+        is = new std::ifstream(argv[1], std::ios_base::in);
+    } else {
+        is = &std::cin;
+    }
+
+    ANTLRInputStream input(*is);
     CLexer lexer(&input);
     CommonTokenStream tokens(&lexer);
 
@@ -32,10 +40,12 @@ int main(int, const char **) {
     CParser parser(&tokens);
     tree::ParseTree *tree = parser.prog();
 
-    // std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
+    std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
 
-    my_visitor visitor;
-    std::cout << std::any_cast<int>(visitor.visit(tree)) << std::endl;
+    // my_visitor visitor;
+    // std::cout << std::any_cast<int>(visitor.visit(tree)) << std::endl;
+
+    if (argc > 1) delete is;
 
     return 0;
 }
