@@ -2,7 +2,7 @@
 #include <type_traits>
 #include <variant>
 
-namespace _impl {
+namespace impl {
 
 template <typename T>
 constexpr T quiet_declval() {
@@ -36,14 +36,14 @@ R match_impl(U &&u, Fs... arms) {
     }
 }
 
-} // namespace _impl
+} // namespace impl
 
 template <typename R = void, typename... Ts, typename... Fs>
 R match(const std::variant<Ts...> &u, Fs... arms) {
-    return _impl::match_impl<R, const Ts &...>(u, arms...);
+    return impl::match_impl<R, const Ts &...>(u, arms...);
 }
 
 template <typename R = void, typename... Ts, typename... Fs>
 R match(std::variant<Ts...> &&u, Fs... arms) {
-    return _impl::match_impl<R, Ts &&...>(std::move(u), arms...);
+    return impl::match_impl<R, Ts &&...>(std::move(u), arms...);
 }

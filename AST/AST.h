@@ -110,13 +110,13 @@ struct FuncDef {
     enum DataTypes m_return_type;
 };
 
-namespace _impl { // Magic Base
+namespace impl { // Magic Base
 using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
                           FuncCall, FuncDef>;
 }
 
 // dummy warpper for variant
-struct Expr : public _impl::Base {
-    using _impl::Base::Base;      // inhert ctors
-    using _impl::Base::operator=; // inhert assignments
+struct Expr : public impl::Base {
+    using impl::Base::Base;      // inhert ctors
+    using impl::Base::operator=; // inhert assignments
 };
