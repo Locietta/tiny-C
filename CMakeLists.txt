@@ -28,6 +28,8 @@ include_directories(${ANTLR_CParser_OUTPUT_DIR})
 include_directories(${ANTLR4_INCLUDE_DIR})
 message(STATUS "Antlr4 Runtime Dir: ${ANTLR4_INCLUDE_DIR}")
 
+add_subdirectory(AST)
+
 add_executable(tinycc main.cpp
     ${ANTLR_CLexer_CXX_OUTPUTS}
     ${ANTLR_CParser_CXX_OUTPUTS}
