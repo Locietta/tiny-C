@@ -7,7 +7,7 @@ add_definitions(-DANTLR4CPP_STATIC)
 
 set(ANTLR_EXECUTABLE /usr/share/java/antlr-complete.jar)
 find_package(ANTLR REQUIRED)
-find_package(antlr4-runtime REQUIRED)
+find_package(antlr4-runtime REQUIRED CONFIG)
 find_package(LLVM REQUIRED CONFIG)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
