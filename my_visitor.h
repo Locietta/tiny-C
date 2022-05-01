@@ -29,9 +29,9 @@ public:
             // move
             if (m_curr_parent == nullptr) {
                 m_global_vars.push_back(std::move(new_node));
-            } else if (m_curr_parent->is<FuncDef>()) {
-                reinterpret_cast<FuncDef *>(m_curr_parent)
-                    ->m_func_body.push_back(std::move(new_node));
+            } else if (m_curr_parent->is<CompoundExpr>()) {
+                reinterpret_cast<CompoundExpr *>(m_curr_parent)
+                    ->m_expr_list.push_back(std::move(new_node));
             } else {
                 // error
             }
