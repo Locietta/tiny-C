@@ -1,4 +1,5 @@
 #include "AST.h"
+#include "constexpr_map.hpp"
 #include <bits/stdc++.h>
 
 using namespace std;
@@ -24,6 +25,13 @@ void parse(Expr &e) {
     );
 }
 
+enum test_enum { AAA, BBB, CCC, COUNT };
+
+constexpr ConstexprMap<enum test_enum, std::string_view, test_enum::COUNT> enum_map{
+    {AAA, "AAA"}, {BBB, "BBB"}, {CCC, "CCC"}};
+
+// enum test_enum2 {DDD, COUNT};
+
 int main() {
     // clang-format off
     auto e = Expr{FuncDef{
@@ -44,7 +52,8 @@ int main() {
         make_unique<Expr>(Return{make_unique<Expr>(ConstVar{2})}));
     parse(e);
 
-    auto vv = make_unique<Expr>(Variable{DataTypes::Double, "v"});
+    auto vv = make_unique<Expr>(Variable{DataTypes::Float, "v"});
     cout << vv->is<Variable>() << endl; // true
     cout << vv->is<InitExpr>() << endl; // false
+    cout << enum_map[AAA] << endl;
 }
