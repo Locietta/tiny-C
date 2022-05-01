@@ -27,7 +27,7 @@ void parse(Expr &e) {
 
 enum test_enum { AAA, BBB, CCC, COUNT };
 
-constexpr SerializeMap<enum test_enum, test_enum::COUNT> enum_map{
+constexpr ConstexprMap<enum test_enum, std::string_view, test_enum::COUNT> enum_map{
     {AAA, "AAA"}, {BBB, "BBB"}, {CCC, "CCC"}};
 
 // enum test_enum2 {DDD, COUNT};
