@@ -1,6 +1,7 @@
 #pragma once
 
 #include "variant_magic.hpp"
+#include <cassert>
 #include <memory>
 #include <string>
 #include <vector>
@@ -129,5 +130,13 @@ struct Expr : public impl::Base {
     template <typename T>
     [[nodiscard]] constexpr bool is() const {
         return std::holds_alternative<T>(*this);
+    }
+    template <typename T>
+    [[nodiscard]] constexpr T &as() {
+        if (auto *ptr = std::get_if<T>(this)) {
+            return *ptr;
+        } else {
+            assert(false && "Bad conversion for variant!");
+        }
     }
 };

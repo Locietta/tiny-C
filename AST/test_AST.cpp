@@ -12,7 +12,7 @@ void parse(Expr &e) {
             for (const auto &para : expr.m_para_list) {
                 parse(*para);
             }
-            for (const auto &func_expr : expr.m_func_body) {
+            for (const auto &func_expr : expr.m_func_body->as<CompoundExpr>().m_expr_list) {
                 parse(*func_expr);
             }
             cout << "Return Type = " << expr.m_return_type << endl;
@@ -47,8 +47,8 @@ int main() {
     }};
     // clang-format on
 
-    get<FuncDef>(e).m_para_list.emplace_back(make_unique<Expr>(Variable{DataTypes::Int, "x"}));
-    get<FuncDef>(e).m_func_body.emplace_back(
+    e.as<FuncDef>().m_para_list.emplace_back(make_unique<Expr>(Variable{DataTypes::Int, "x"}));
+    e.as<FuncDef>().m_func_body->as<CompoundExpr>().m_expr_list.emplace_back(
         make_unique<Expr>(Return{make_unique<Expr>(ConstVar{2})}));
     parse(e);
 
