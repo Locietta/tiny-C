@@ -34,7 +34,7 @@ add_executable(tinycc main.cpp
     ${ANTLR_CLexer_CXX_OUTPUTS}
     ${ANTLR_CParser_CXX_OUTPUTS}
 )
-target_link_libraries(tinycc PRIVATE antlr4_static)
+target_link_libraries(tinycc PRIVATE antlr4_static AST)
 add_custom_command( # install hooks
     TARGET tinycc
     PRE_BUILD 
