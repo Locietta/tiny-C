@@ -67,7 +67,7 @@ void doAfter() {}
 @parser::basevisitormembers {/* base visitor private declarations/members section */}
 @parser::basevisitordefinitions {/* base visitor definitions section */}
 
-// Actual grammar start. prog: expr EOF ;
+// Actual grammar start. prog: decl_list EOF ;
 
 prog: decl_list EOF;
 
