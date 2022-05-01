@@ -76,8 +76,9 @@ decl_list: decl_list decl | decl;
 decl: var_decl | func_decl;
 
 simple_var_decl:
-	Identifier (Assign Constant)?
-	| Identifier LeftBracket Constant RightBracket (Assign init_list)?;
+	Identifier (Assign Constant)?	# no_array_decl
+	| Identifier LeftBracket Constant RightBracket (Assign init_list)? # array_decl
+	; 
 
 init_list: LeftBrace (Constant (Comma Constant)*)? RightBrace;
 
@@ -86,7 +87,6 @@ var_decl:
 
 type_spec:
 	Char
-	| Double
 	| Int
 	| Long
 	| Float
