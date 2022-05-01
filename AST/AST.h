@@ -41,6 +41,10 @@ enum DataTypes {
 /// Forward Declaration
 struct Expr; // generic node
 
+struct CompoundExpr {
+    std::vector<std::unique_ptr<Expr>> m_expr_list;
+};
+
 struct Variable {
     enum DataTypes m_var_type;
     std::string m_var_name;
@@ -68,14 +72,14 @@ struct Binary {
 
 struct IfElse {
     std::unique_ptr<Expr> m_condi;
-    std::vector<std::unique_ptr<Expr>> m_if;
-    std::vector<std::unique_ptr<Expr>> m_else;
+    std::unique_ptr<Expr> m_if;
+    std::unique_ptr<Expr> m_else;
 };
 
 //> Every loop can be converted to while-loop
 struct WhileLoop {
     std::unique_ptr<Expr> m_condi;
-    std::vector<std::unique_ptr<Expr>> m_loop_body;
+    std::unique_ptr<Expr> m_loop_body;
 };
 
 /**
@@ -108,13 +112,13 @@ struct FuncCall {
 struct FuncDef {
     std::string m_name;
     std::vector<std::unique_ptr<Expr>> m_para_list; // should put `Variable` here
-    std::vector<std::unique_ptr<Expr>> m_func_body;
+    std::unique_ptr<Expr> m_func_body;
     enum DataTypes m_return_type;
 };
 
 namespace impl { // Magic Base
 using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
-                          FuncCall, FuncDef>;
+                          FuncCall, FuncDef, CompoundExpr>;
 }
 
 // dummy warpper for variant

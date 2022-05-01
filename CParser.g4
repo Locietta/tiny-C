@@ -105,9 +105,7 @@ param:
 	type_spec Identifier
 	| type_spec Identifier LeftBracket RightBracket;
 
-comp_stmt: LeftBrace local_decls stmt_list RightBrace;
-
-local_decls: (var_decl local_decls)?;
+comp_stmt: LeftBrace stmt_list RightBrace;
 
 stmt_list: (stmt stmt_list)?;
 
@@ -116,7 +114,9 @@ stmt:
 	| comp_stmt
 	| selec_stmt
 	| iter_stmt
-	| return_stmt;
+	| return_stmt
+	| var_decl
+	;
 
 expr_stmt: expr Semi | Semi;
 
