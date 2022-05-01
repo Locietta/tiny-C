@@ -118,5 +118,10 @@ using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, W
 // dummy warpper for variant
 struct Expr : public impl::Base {
     using impl::Base::Base;      // inhert ctors
-    using impl::Base::operator=; // inhert assignments
+    using impl::Base::operator=; // inhert
+
+    template <typename T>
+    [[nodiscard]] constexpr bool is() const {
+        return std::holds_alternative<T>(*this);
+    }
 };
