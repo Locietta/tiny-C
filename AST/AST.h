@@ -43,44 +43,46 @@ enum DataTypes {
 struct Expr; // generic node
 
 struct CompoundExpr {
-    std::vector<std::unique_ptr<Expr>> m_expr_list;
+    std::vector<std::shared_ptr<Expr>> m_expr_list;
+};
+
+struct ConstVar : public std::variant<char, int, float, double, std::string> {
+    using Base = std::variant<char, int, float, double, std::string>;
+    using Base::Base;
+    using Base::operator=;
 };
 
 struct Variable {
     enum DataTypes m_var_type;
     std::string m_var_name;
-};
-
-struct ConstVar {
-    std::variant<char, int, float, double, std::string> m_value;
+    std::shared_ptr<ConstVar> m_var_init;
 };
 
 struct InitExpr {
-    std::unique_ptr<Variable> m_var;
-    std::unique_ptr<ConstVar> m_value;
+    std::vector<std::shared_ptr<Variable>> m_vars;
 };
 
 struct Unary {
-    std::unique_ptr<Expr> m_operand;
+    std::shared_ptr<Expr> m_operand;
     enum Operators m_operator;
 };
 
 struct Binary {
-    std::unique_ptr<Expr> m_operand1;
-    std::unique_ptr<Expr> m_operand2;
+    std::shared_ptr<Expr> m_operand1;
+    std::shared_ptr<Expr> m_operand2;
     enum Operators m_operator;
 };
 
 struct IfElse {
-    std::unique_ptr<Expr> m_condi;
-    std::unique_ptr<Expr> m_if;
-    std::unique_ptr<Expr> m_else;
+    std::shared_ptr<Expr> m_condi;
+    std::shared_ptr<Expr> m_if;
+    std::shared_ptr<Expr> m_else;
 };
 
 //> Every loop can be converted to while-loop
 struct WhileLoop {
-    std::unique_ptr<Expr> m_condi;
-    std::unique_ptr<Expr> m_loop_body;
+    std::shared_ptr<Expr> m_condi;
+    std::shared_ptr<Expr> m_loop_body;
 };
 
 /**
@@ -91,35 +93,35 @@ struct WhileLoop {
  *
  */
 // struct ForLoop {
-//     std::unique_ptr<Expr> m_init; // init
-//     std::unique_ptr<Expr> m_condi; // condition
-//     std::vector<std::unique_ptr<Expr>> m_loop_body; // loop body + iter
+//     std::shared_ptr<Expr> m_init; // init
+//     std::shared_ptr<Expr> m_condi; // condition
+//     std::vector<std::shared_ptr<Expr>> m_loop_body; // loop body + iter
 // };
 
 // struct DoWhileLoop {
-//     std::unique_ptr<Expr> m_condi;
-//     std::vector<std::unique_ptr<Expr>> m_loop_body;
+//     std::shared_ptr<Expr> m_condi;
+//     std::vector<std::shared_ptr<Expr>> m_loop_body;
 // };
 
 struct Return {
-    std::unique_ptr<Expr> m_expr;
+    std::shared_ptr<Expr> m_expr;
 };
 
 struct FuncCall {
-    std::vector<std::unique_ptr<Expr>> m_para_list;
+    std::vector<std::shared_ptr<Expr>> m_para_list;
     std::string m_func_name;
 };
 
 struct FuncDef {
     std::string m_name;
-    std::vector<std::unique_ptr<Expr>> m_para_list; // should put `Variable` here
-    std::unique_ptr<Expr> m_func_body;
+    std::vector<std::shared_ptr<Expr>> m_para_list; // should put `Variable` here
+    std::shared_ptr<Expr> m_func_body;
     enum DataTypes m_return_type;
 };
 
 namespace impl { // Magic Base
-using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
-                          FuncCall, FuncDef, CompoundExpr>;
+using Base = std::variant<Variable, InitExpr, Unary, Binary, IfElse, WhileLoop, Return, FuncCall,
+                          FuncDef, CompoundExpr>;
 }
 
 // dummy warpper for variant

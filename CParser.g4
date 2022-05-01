@@ -105,17 +105,15 @@ param:
 	type_spec Identifier
 	| type_spec Identifier LeftBracket RightBracket;
 
-comp_stmt: LeftBrace stmt_list RightBrace;
-
-stmt_list: (stmt stmt_list)?;
+comp_stmt: LeftBrace (stmt)* RightBrace;
 
 stmt:
-	expr_stmt
-	| comp_stmt
-	| selec_stmt
-	| iter_stmt
-	| return_stmt
-	| var_decl
+	expr_stmt		
+	| comp_stmt		
+	| selec_stmt	
+	| iter_stmt		
+	| return_stmt	
+	| var_decl		
 	;
 
 expr_stmt: expr Semi | Semi;
