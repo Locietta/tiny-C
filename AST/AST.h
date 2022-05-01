@@ -31,6 +31,8 @@ enum DataTypes {
     Float,
     Double,
     String,
+    Short,
+    Long
     // etc
 };
 
