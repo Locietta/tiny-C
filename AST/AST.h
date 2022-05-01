@@ -1,5 +1,6 @@
 #pragma once
 
+#include "utility.hpp"
 #include "variant_magic.hpp"
 #include <cassert>
 #include <memory>
@@ -42,8 +43,10 @@ enum DataTypes {
 /// Forward Declaration
 struct Expr; // generic node
 
-struct CompoundExpr {
-    std::vector<std::shared_ptr<Expr>> m_expr_list;
+struct CompoundExpr : std::vector<std::shared_ptr<Expr>> {
+    using Base = std::vector<std::shared_ptr<Expr>>;
+    using Base::Base;
+    using Base::operator=;
 };
 
 struct ConstVar : public std::variant<char, int, float, double, std::string> {
@@ -55,11 +58,14 @@ struct ConstVar : public std::variant<char, int, float, double, std::string> {
 struct Variable {
     enum DataTypes m_var_type;
     std::string m_var_name;
-    std::shared_ptr<ConstVar> m_var_init;
+    std::shared_ptr<Expr> m_var_init; // ConstVar
 };
 
-struct InitExpr {
-    std::vector<std::shared_ptr<Variable>> m_vars;
+struct InitExpr : public std::vector<std::shared_ptr<Expr>> {
+    // vector of Variables
+    using Base = std::vector<std::shared_ptr<Expr>>;
+    using Base::Base;
+    using Base::operator=;
 };
 
 struct Unary {
@@ -120,8 +126,8 @@ struct FuncDef {
 };
 
 namespace impl { // Magic Base
-using Base = std::variant<Variable, InitExpr, Unary, Binary, IfElse, WhileLoop, Return, FuncCall,
-                          FuncDef, CompoundExpr>;
+using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
+                          FuncCall, FuncDef, CompoundExpr>;
 }
 
 // dummy warpper for variant
@@ -140,5 +146,6 @@ struct Expr : public impl::Base {
         } else {
             assert(false && "Bad conversion for variant!");
         }
+        unreachable();
     }
 };

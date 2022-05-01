@@ -5,30 +5,35 @@
 using namespace antlrcpp;
 using namespace std;
 
+inline auto expr_cast(std::any any) {
+    return any_cast<shared_ptr<Expr>>(any);
+}
+
 class my_visitor : public CParserBaseVisitor {
 public:
-    std::vector<std::shared_ptr<FuncDef>> m_func_roots;
-    std::vector<std::shared_ptr<InitExpr>> m_global_vars;
-    // Expr *m_curr_parent = nullptr;
+    std::vector<std::shared_ptr<Expr>> m_func_roots;  // FuncDef
+    std::vector<std::shared_ptr<Expr>> m_global_vars; // InitExpr
     bool is_global = true;
 
     std::any visitVar_decl(CParser::Var_declContext *ctx) override {
         // initial node
-        shared_ptr<InitExpr> curr_node = make_shared<InitExpr>();
+        auto ret = make_shared<Expr>(InitExpr{});
+        auto &curr_node = ret->as<InitExpr>(); // InitExpr curr_node;
 
-        for (int i = 0; i < ctx->simple_var_decl().size(); i++) {
-            // init children
-            curr_node->m_vars.push_back(
-                any_cast<shared_ptr<Variable>>(visit(ctx->simple_var_decl(i))));
-            curr_node->m_vars.back()->m_var_type =
-                any_cast<enum DataTypes>(visit(ctx->type_spec()));
+        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
+        const auto &simple_var_decls = ctx->simple_var_decl();
+
+        for (auto simple_var : simple_var_decls) {
+            auto var = expr_cast(visit(simple_var))->as<Variable>();
+            var.m_var_type = type;
+            curr_node.push_back(make_shared<Expr>(move(var)));
         }
 
         if (is_global) {
-            m_global_vars.push_back(curr_node);
+            m_global_vars.push_back(move(ret));
             return {};
         } else {
-            return curr_node;
+            return move(ret);
         }
     }
 
@@ -47,46 +52,54 @@ public:
             return Void;
         } else {
             // error
-            return {};
+            assert(false);
+            unreachable();
         }
     }
 
     std::any visitNo_array_decl(CParser::No_array_declContext *ctx) override {
-        shared_ptr<Variable> curr_node = make_shared<Variable>();
-        curr_node->m_var_name = ctx->Identifier()->toString();
+        auto ret = make_shared<Expr>(Variable{
+            .m_var_name = ctx->Identifier()->toString(),
+        });
+        auto &curr_node = ret->as<Variable>(); // Variable curr_node;
+
         if (ctx->Assign()) {
-            curr_node->m_var_init = make_shared<ConstVar>();
+            auto p_init = make_shared<Expr>(ConstVar{});
+            auto &init = p_init->as<ConstVar>();
+
             std::string const_text = ctx->Constant()->getText();
             if (const_text[0] == '\'') {
                 if (const_text == R"('\n')")
-                    *(curr_node->m_var_init) = '\n';
+                    init = '\n';
                 else if (const_text == R"('\t')")
-                    *(curr_node->m_var_init) = '\t';
+                    init = '\t';
                 else if (const_text == R"('\\')")
-                    *(curr_node->m_var_init) = '\\';
+                    init = '\\';
                 else {
                     // error
+                    assert(false);
+                    unreachable();
                 }
             } else if (const_text.find('.') == std::string::npos) {
-                *(curr_node->m_var_init) = atoi(const_text.c_str());
+                init = atoi(const_text.c_str());
             } else {
-                *(curr_node->m_var_init) = atof(const_text.c_str());
+                init = atof(const_text.c_str());
             }
+            curr_node.m_var_init = make_shared<Expr>(init);
         }
 
-        return curr_node;
+        return ret;
     }
 
     std::any visitComp_stmt(CParser::Comp_stmtContext *ctx) override {
         // init node
-        shared_ptr<Expr> curr_node = make_shared<Expr>(CompoundExpr{});
+        auto ret = make_shared<Expr>(CompoundExpr{});
+        auto &curr_node = ret->as<CompoundExpr>();
 
-        int n = ctx->stmt().size();
-        for (int i = 0; i < n; i++) {
-            curr_node->as<CompoundExpr>().m_expr_list.push_back(
-                any_cast<shared_ptr<Expr>>(visit(ctx->stmt(i))));
+        for (const auto &stmts = ctx->stmt(); const auto &stmt : stmts) {
+            curr_node.push_back(expr_cast(visit(stmt)));
         }
 
-        return curr_node;
+        return ret;
     }
 };
