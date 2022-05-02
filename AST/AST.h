@@ -85,13 +85,12 @@ struct ConstVar : public std::variant<char, int, float, double, std::string> {
         return std::holds_alternative<T>(*this);
     }
     template <typename T>
-    [[nodiscard]] constexpr T &as() {
-        if (auto *ptr = std::get_if<T>(this)) {
-            return *ptr;
-        } else {
-            assert(false && "Bad conversion for variant!");
-        }
-        unreachable();
+    constexpr const T &as() const {
+        return std::get<T>(*this);
+    }
+    template <typename T>
+    constexpr T &as() {
+        return std::get<T>(*this);
     }
 };
 
@@ -157,7 +156,7 @@ struct Return {
 
 struct FuncCall {
     std::vector<std::shared_ptr<Expr>> m_para_list;
-    std::string m_func_name;
+    NameRef m_func_name;
 };
 
 struct FuncDef {
@@ -186,13 +185,12 @@ struct Expr : public impl::Base {
         return std::holds_alternative<T>(*this);
     }
     template <typename T>
-    [[nodiscard]] constexpr T &as() {
-        if (auto *ptr = std::get_if<T>(this)) {
-            return *ptr;
-        } else {
-            assert(false && "Bad conversion for variant!");
-        }
-        unreachable();
+    constexpr const T &as() const {
+        return std::get<T>(*this);
+    }
+    template <typename T>
+    constexpr T &as() {
+        return std::get<T>(*this);
     }
 };
 
