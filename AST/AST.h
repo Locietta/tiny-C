@@ -27,6 +27,15 @@ enum Operators {
     GreaterEqual, // >=
     LessEqual,    // <=
     NotEqual,     // !=
+    PlusAssign,
+    MinusAssign,
+    MulAssign,
+    DivAssign,
+    ModAssign,
+    Assign,
+    OrOr,
+    AndAnd,
+
     enum_op_count
     // etc
 };

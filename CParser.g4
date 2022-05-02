@@ -124,13 +124,13 @@ iter_stmt: While LeftParen expr RightParen (comp_stmt | stmt);
 
 return_stmt: Return (expr)? Semi;
 
-expr: var assign expr 
-	| oror_expr
+expr: var assign expr 	# assign_expr
+	| oror_expr			# not_assign_expr // no need to override
 	;
 
 var: Identifier;
 
-assign: Assign | PlusAssign | MinusAssign | MulAssign | DivAssign;
+assign: Assign | PlusAssign | MinusAssign | MulAssign | DivAssign | ModAssign;
 
 oror_expr: (andand_expr OrOr)* andand_expr;
 
@@ -145,14 +145,18 @@ relop:
 	| LessEqual
 	| Greater
 	| GreaterEqual
-	| Equal
-	| NotEqual;
+	;
 
 add_expr: add_expr (Plus | Minus) term | term;
 
-term: term (Mul | Div) factor | factor;
+term: term (Mul | Div | Mod) factor | factor;
 
-factor: LeftParen expr RightParen | var | call | Constant;
+factor: 
+	LeftParen expr RightParen 	#paren_factor 	// no need to override
+	| var 						# var_factor
+	| call 						# call_factor	// no need to override
+	| Constant					# const_factor
+	;
 
 call: Identifier LeftParen args RightParen;
 
