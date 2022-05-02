@@ -7,12 +7,18 @@
 // // int foo(int a) {
 // //     return a * a;
 // // }
+// #include <stdio.h>
 
-int x=1;
+int x = 1;
 char z = '\n';
 float y = 0.5;
 
-int main(void){
+int main(void) {
     y = y;
+    // printf("%d %c %f", x, z, y);
+    // if (x == 2) {
+    //     int a = 3;
+    // } else {
+    // }
     return 0;
 }

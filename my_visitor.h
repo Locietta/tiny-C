@@ -73,7 +73,7 @@ public:
         for (auto m_params : param_list) {
             curr_node.m_para_list.push_back(make_shared<Expr>(param_list));
         }
-
+        m_func_roots.push_back(ret);
         return ret;
     }
 

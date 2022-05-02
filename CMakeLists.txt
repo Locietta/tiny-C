@@ -24,12 +24,18 @@ ANTLR_TARGET(CParser CParser.g4 PARSER
     VISITOR
     LISTENER)
 
+# ANTLR4 includes
 include_directories(${ANTLR_CLexer_OUTPUT_DIR})
 include_directories(${ANTLR_CParser_OUTPUT_DIR})
 include_directories(${ANTLR4_INCLUDE_DIR})
 message(STATUS "Antlr4 Runtime Dir: ${ANTLR4_INCLUDE_DIR}")
 
+# LLVM includes
+include_directories(${LLVM_INCLUDE_DIRS})
+
+# sub-directories
 add_subdirectory(AST)
+add_subdirectory(IR)
 
 add_executable(tinycc main.cpp
     ${ANTLR_CLexer_CXX_OUTPUTS}
@@ -38,7 +44,7 @@ add_executable(tinycc main.cpp
 target_link_libraries(tinycc PRIVATE antlr4_static AST)
 add_custom_command( # install hooks
     TARGET tinycc
-    PRE_BUILD 
+    PRE_BUILD
     COMMAND git config core.hooksPath ${PROJECT_SOURCE_DIR}/.github/.hooks
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/sexp_to_png.py ${PROJECT_BINARY_DIR}
     VERBATIM
