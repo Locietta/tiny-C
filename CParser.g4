@@ -99,7 +99,7 @@ func_decl:
 
 params: param_list | (Void)?;
 
-param_list: param_list Comma param | param;
+param_list: (param Comma)* param;
 
 param:
 	type_spec Identifier
@@ -160,8 +160,6 @@ factor:
 
 call: Identifier LeftParen args RightParen;
 
-args: arg_list?;
-
-arg_list: arg_list Comma expr | expr;
+args: ((expr Comma)* expr)?;	// no need to override
 
 //expr: expr (Plus | Minus) INT # AddSub | INT # Num ;

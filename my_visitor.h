@@ -57,6 +57,57 @@ public:
         }
     }
 
+    std::any visitFunc_decl(CParser::Func_declContext *ctx) override {
+        auto ret = make_shared<Expr>(FuncDef{});
+        auto &curr_node = ret->as<FuncDef>();
+
+        curr_node.m_name = ctx->Identifier()->toString();
+
+        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
+        curr_node.m_return_type = type;
+
+        auto body = any_cast<shared_ptr<Expr>>(visit(ctx->comp_stmt()));
+        curr_node.m_func_body = body;
+
+        const auto &param_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
+        for (auto m_params : param_list) {
+            curr_node.m_para_list.push_back(make_shared<Expr>(param_list));
+        }
+
+        return ret;
+    }
+
+    std::any visitParams(CParser::ParamsContext *ctx) override {
+        std::vector<std::shared_ptr<Expr>> ret;
+
+        if (ctx->param_list()) {
+            ret.push_back(any_cast<shared_ptr<Expr>>(visit(ctx->param_list())));
+        }
+
+        return ret;
+    }
+
+    std::any visitParam_list(CParser::Param_listContext *ctx) override {
+        std::vector<std::shared_ptr<Expr>> ret;
+
+        for (const auto &params = ctx->param(); const auto &param : params) {
+            ret.push_back(any_cast<shared_ptr<Expr>>(visit(param)));
+        }
+
+        return ret;
+    }
+
+    std::any visitParam(CParser::ParamContext *ctx) override {
+        auto ret = make_shared<Expr>(Variable{
+            .m_var_name = ctx->Identifier()->toString(),
+        });
+        auto &curr_node = ret->as<Variable>();
+        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
+        curr_node.m_var_type = type;
+
+        return ret;
+    }
+
     std::any visitNo_array_decl(CParser::No_array_declContext *ctx) override {
         auto ret = make_shared<Expr>(Variable{
             .m_var_name = ctx->Identifier()->toString(),
@@ -438,6 +489,22 @@ public:
             curr_node = atoi(const_text.c_str());
         } else {
             curr_node = atof(const_text.c_str());
+        }
+
+        return ret;
+    }
+
+    std::any visitCall(CParser::CallContext *ctx) override {
+        auto ret = make_shared<Expr>(FuncCall{});
+        auto &curr_node = ret->as<FuncCall>();
+
+        curr_node.m_func_name = ctx->Identifier()->getText();
+
+        int n;
+        if ((n = ctx->args()->expr().size()) > 0) {
+            for (int i = 0; i < n; i++) {
+                curr_node.m_para_list.push_back(expr_cast(visit(ctx->args()->expr(i))));
+            }
         }
 
         return ret;
