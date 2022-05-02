@@ -125,7 +125,7 @@ Constant:
 
 fragment IntegerConstant: DecimalConstant;
 
-fragment DecimalConstant: NonzeroDigit Digit*;
+fragment DecimalConstant: NonzeroDigit Digit* | '0';
 
 fragment NonzeroDigit: [1-9];
 

@@ -2,7 +2,6 @@ build
 *.o
 
 *.png
-*.txt
 **/output/**
 
 # antlr4 
