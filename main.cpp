@@ -24,6 +24,11 @@ int main(int argc, const char *argv[]) {
     std::istream *is = nullptr;
     if (argc > 1) {
         is = new std::ifstream(argv[1], std::ios_base::in);
+        if (!*is) {
+            fmt::print("Failed to open file {}! Aborting...", argv[1]);
+            delete is;
+            return 1;
+        }
     } else {
         is = &std::cin;
     }
