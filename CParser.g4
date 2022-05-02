@@ -124,13 +124,21 @@ iter_stmt: While LeftParen expr RightParen (comp_stmt | stmt);
 
 return_stmt: Return (expr)? Semi;
 
-expr: var Assign expr | simple_expr;
-
-var: Identifier 
-//	| Identifier LeftBracket expr RightBracket
+expr: var assign expr 
+	| oror_expr
 	;
 
-simple_expr: add_expr (relop add_expr)?;
+var: Identifier;
+
+assign: Assign | PlusAssign | MinusAssign | MulAssign | DivAssign;
+
+oror_expr: (andand_expr OrOr)* andand_expr;
+
+andand_expr: (equal_expr AndAnd)* equal_expr;
+
+equal_expr: (compare_expr (Equal | NotEqual))* compare_expr;
+
+compare_expr: (add_expr relop)* add_expr;
 
 relop:
 	Less
@@ -152,4 +160,4 @@ args: arg_list?;
 
 arg_list: arg_list Comma expr | expr;
 
-// expr: expr (Plus | Minus) INT # AddSub | INT # Num ;
+//expr: expr (Plus | Minus) INT # AddSub | INT # Num ;
