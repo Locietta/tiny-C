@@ -135,6 +135,10 @@ struct Expr : public impl::Base {
     using impl::Base::Base;      // inhert ctors
     using impl::Base::operator=; // inhert
 
+    // force move when copied
+    // NOTE: empty warpper, so &Expr == &Base
+    Expr(Expr const &other) : impl::Base(std::move(*((impl::Base *) &other))) {}
+
     template <typename T>
     [[nodiscard]] constexpr bool is() const {
         return std::holds_alternative<T>(*this);
