@@ -442,4 +442,20 @@ public:
 
         return ret;
     }
+
+    std::any visitCall(CParser::CallContext *ctx) override {
+        auto ret = make_shared<Expr>(FuncCall{});
+        auto &curr_node = ret->as<FuncCall>();
+
+        curr_node.m_func_name = ctx->Identifier()->getText();
+
+        int n;
+        if ((n = ctx->args()->expr().size()) > 0) {
+            for (int i = 0; i < n; i++) {
+                curr_node.m_para_list.push_back(expr_cast(visit(ctx->args()->expr(i))));
+            }
+        }
+
+        return ret;
+    }
 };
