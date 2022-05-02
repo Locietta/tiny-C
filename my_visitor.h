@@ -66,7 +66,7 @@ public:
         auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
         curr_node.m_return_type = type;
 
-        auto body = make_shared<Expr>(visit(ctx->comp_stmt()));
+        auto body = any_cast<shared_ptr<Expr>>(visit(ctx->comp_stmt()));
         curr_node.m_func_body = body;
 
         const auto &param_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
