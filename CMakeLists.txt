@@ -9,6 +9,7 @@ set(ANTLR_EXECUTABLE /usr/share/java/antlr-complete.jar)
 find_package(ANTLR REQUIRED)
 find_package(antlr4-runtime REQUIRED CONFIG)
 find_package(LLVM REQUIRED CONFIG)
+find_package(fmt REQUIRED)
 
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")

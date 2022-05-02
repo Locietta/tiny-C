@@ -116,18 +116,20 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         });
 }
 
-void ASTPrinter::ToPNG(const char *exe_path, const char *filename) {
+void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {
     sexp_fmt(*AST);
     std::string out;
-    auto p_last = std::strrchr(exe_path, '/');
-    std::string_view exe_path_stripped{exe_path, static_cast<size_t>(p_last - exe_path)};
+    if (filename.has_parent_path()) {
+        fmt::format_to(back_inserter(out), "mkdir -p {}", filename.parent_path().c_str());
+        system(out.c_str());
+        out.clear();
+    }
+
     fmt::format_to(back_inserter(out),
                    "echo \"{}\n{}\" | python {}/sexp_to_png.py",
                    fmt::to_string(buffer),
-                   filename,
-                   exe_path_stripped);
+                   filename.c_str(),
+                   exe_path.parent_path().c_str());
     fmt::print("{}", fmt::to_string(buffer));
     system(out.c_str());
 }
-
-void ASTPrinter::ToPNG(const char *exe_path, const string &filename) {}

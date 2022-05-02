@@ -204,11 +204,15 @@ struct Expr : public impl::Base {
     }
 };
 
+#include <filesystem>
+
+namespace fs = std::filesystem;
+
 class ASTPrinter {
 public:
     std::shared_ptr<Expr> AST;
-    void ToPNG(const char *exe_path, const char *filename);
-    void ToPNG(const char *exe_path, const std::string &filename);
+    void ToPNG(fs::path const &exe_path, fs::path const &filename);
+    // void ToPNG(const char *exe_path, const std::string &filename);
 
     ASTPrinter(std::shared_ptr<Expr> ast) : AST{std::move(ast)} {}
 

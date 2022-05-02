@@ -40,11 +40,17 @@ int main(int argc, const char *argv[]) {
     my_visitor visitor;
     std::any test = visitor.visit(tree);
 
-    if (visitor.m_func_roots.empty() && visitor.m_global_vars.empty()) {
-        fmt::print("No AST is generated...\n");
-        return 0;
+    for (int i = 0; const auto &func : visitor.m_func_roots) {
+        ASTPrinter print_func{func};
+        std::string pic_path;
+        fmt::format_to(std::back_inserter(pic_path), "output/func{}", i++);
+        print_func.ToPNG(argv[0], move(pic_path));
     }
-    ASTPrinter print{visitor.m_global_vars[0]};
-    print.ToPNG(argv[0], "hahaha");
+    for (int i = 0; const auto &var : visitor.m_global_vars) {
+        ASTPrinter print_var{var};
+        std::string pic_path;
+        fmt::format_to(std::back_inserter(pic_path), "output/var{}", i++);
+        print_var.ToPNG(argv[0], move(pic_path));
+    }
     return 0;
 }
