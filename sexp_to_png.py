@@ -134,4 +134,4 @@ def sexp2png(
 
 
 if __name__ == "__main__":
-    sexp2png(input("S-expression:"))
+    sexp2png(sexpr=input(), outputFile=input())

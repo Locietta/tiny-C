@@ -9,6 +9,7 @@
 #include <fmt/format.h>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 // ------------------------------ Operator Type ---------------------------
@@ -196,11 +197,11 @@ struct Expr : public impl::Base {
 
 class ASTPrinter {
 public:
-    const Expr &AST;
-    void ToPNG(const char *filename);
-    void ToPNG(const std::string &filename);
+    std::shared_ptr<Expr> AST;
+    void ToPNG(const char *exe_path, const char *filename);
+    void ToPNG(const char *exe_path, const std::string &filename);
 
-    ASTPrinter(const Expr &e) : AST{e} {}
+    ASTPrinter(std::shared_ptr<Expr> ast) : AST{std::move(ast)} {}
 
 private:
     void sexp_fmt(const Expr &e);

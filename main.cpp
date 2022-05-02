@@ -40,10 +40,13 @@ int main(int argc, const char *argv[]) {
     CParser parser(&tokens);
     tree::ParseTree *tree = parser.prog();
 
-    std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
+    // std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
 
     my_visitor visitor;
     std::any test = visitor.visit(tree);
+
+    ASTPrinter print{visitor.m_global_vars[0]};
+    print.ToPNG(argv[0], "hahaha");
 
     if (argc > 1) delete is;
 
