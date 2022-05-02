@@ -71,7 +71,7 @@ void doAfter() {}
 
 prog: decl_list EOF;
 
-decl_list: decl_list decl | decl;
+decl_list: decl*;
 
 decl: var_decl | func_decl;
 
