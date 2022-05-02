@@ -49,7 +49,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         [this](Variable const &var) {
             print2buf(" (var:{}", var.m_var_name);
             print2buf(" type:{}", type_map[var.m_var_type]);
-            sexp_fmt(*var.m_var_init);
+            if (var.m_var_init) sexp_fmt(*var.m_var_init);
             print2buf(")");
         },
         [this](InitExpr const &inits) {
@@ -113,6 +113,11 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
                 sexp_fmt(*expr);
             }
             print2buf(")");
+        },
+        [this](auto const &) {
+            // ?!
+            assert(false && "something wrong with type match?");
+            unreachable();
         });
 }
 
