@@ -71,11 +71,15 @@ constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count>
     {Long, "long"},
 };
 
-constexpr auto check = []() { // magic: compile-time check
+namespace static_check {
+
+constexpr auto check_map = []() { // magic: compile-time check
     static_assert(op_map.sz == enum_op_count, "Incomplete dispatch for op_enum->string map!");
     static_assert(type_map.sz == enum_type_count, "Incomplete dispatch for type_enum->string map!");
     return true; // no-use
 }();
+
+} // namespace static_check
 
 // ------------------------------ AST Nodes --------------------------------
 
