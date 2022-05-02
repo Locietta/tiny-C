@@ -124,13 +124,13 @@ iter_stmt: While LeftParen expr RightParen (comp_stmt | stmt);
 
 return_stmt: Return (expr)? Semi;
 
-expr: var assign expr 
-	| oror_expr
+expr: var assign expr 	# assign_expr
+	| oror_expr			# not_assign_expr // no need to override
 	;
 
 var: Identifier;
 
-assign: Assign | PlusAssign | MinusAssign | MulAssign | DivAssign;
+assign: Assign | PlusAssign | MinusAssign | MulAssign | DivAssign | ModAssign;
 
 oror_expr: (andand_expr OrOr)* andand_expr;
 

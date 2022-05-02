@@ -173,4 +173,17 @@ public:
 
         return ret;
     }
+
+    std::any visitAssign_expr(CParser::Assign_exprContext *ctx) override {
+        auto ret = make_shared<Expr>(Binary{});
+        auto &curr_node = ret->as<Binary>();
+
+        curr_node.m_operand1 = expr_cast(visit(ctx->var()));
+        curr_node.m_operand2 = expr_cast(visit(ctx->expr()));
+        curr_node.m_operator = any_cast<enum Operators>(visit(ctx->assign()));
+
+        return ret;
+    }
+
+    std::any visitVar(CParser::VarContext *ctx) override {}
 };

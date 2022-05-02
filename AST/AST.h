@@ -21,7 +21,12 @@ enum Operators {
     Less,         // <
     GreaterEqual, // >=
     LessEqual,    // <=
-    NotEqual      // !=
+    NotEqual,     // !=
+    PlusAssign,
+    MinusAssign,
+    MulAssign,
+    DivAssign,
+    ModAssign
 
     // etc
 };
