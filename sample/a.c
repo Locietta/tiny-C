@@ -11,3 +11,8 @@
 int x=1;
 char z = '\n';
 float y = 0.5;
+
+int main(void){
+    y = y;
+    return 0;
+}

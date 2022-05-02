@@ -509,4 +509,15 @@ public:
 
         return ret;
     }
+
+    std::any visitExpr_stmt(CParser::Expr_stmtContext *ctx) override { return visit(ctx->expr()); }
+
+    std::any visitParen_factor(CParser::Paren_factorContext *ctx) override {
+        return visit(ctx->expr());
+    }
+
+    std::any visitArgs(CParser::ArgsContext *ctx) override {
+        cout << "unexpected call func:visitArgs, by cdh" << endl;
+        return visitChildren(ctx);
+    }
 };

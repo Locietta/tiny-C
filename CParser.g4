@@ -116,7 +116,7 @@ stmt:				// no need to override
 	| var_decl		
 	;
 
-expr_stmt: expr Semi | Semi;	// no need to override
+expr_stmt: expr Semi | Semi;	
 
 selec_stmt: If LeftParen expr RightParen (comp_stmt | stmt) (Else (comp_stmt | stmt))?;
 
@@ -152,7 +152,7 @@ add_expr: add_expr (Plus | Minus) term | term;
 term: term (Mul | Div | Mod) factor | factor;
 
 factor: 
-	LeftParen expr RightParen 	#paren_factor 	// no need to override
+	LeftParen expr RightParen 	#paren_factor
 	| var 						# var_factor
 	| call 						# call_factor	// no need to override
 	| Constant					# const_factor
