@@ -2,7 +2,7 @@ build
 *.o
 
 *.png
-*.txt
+
 
 # antlr4 
 C*Listener.{h,cpp}
