@@ -31,6 +31,9 @@ enum Operators {
     MulAssign,
     DivAssign,
     ModAssign,
+    Assign,
+    OrOr,
+    AndAnd,
 
     enum_op_count
     // etc

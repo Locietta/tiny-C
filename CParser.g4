@@ -145,14 +145,18 @@ relop:
 	| LessEqual
 	| Greater
 	| GreaterEqual
-	| Equal
-	| NotEqual;
+	;
 
 add_expr: add_expr (Plus | Minus) term | term;
 
-term: term (Mul | Div) factor | factor;
+term: term (Mul | Div | Mod) factor | factor;
 
-factor: LeftParen expr RightParen | var | call | Constant;
+factor: 
+	LeftParen expr RightParen 	#paren_factor 	// no need to override
+	| var 						# var_factor
+	| call 						# call_factor	// no need to override
+	| Constant					# const_factor
+	;
 
 call: Identifier LeftParen args RightParen;
 
