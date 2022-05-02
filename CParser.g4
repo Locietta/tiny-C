@@ -77,7 +77,7 @@ decl: var_decl | func_decl;
 
 simple_var_decl:
 	Identifier (Assign Constant)?	# no_array_decl
-	| Identifier LeftBracket Constant RightBracket (Assign init_list)? # array_decl
+//	| Identifier LeftBracket Constant RightBracket (Assign init_list)? # array_decl
 	; 
 
 init_list: LeftBrace (Constant (Comma Constant)*)? RightBrace;
@@ -107,7 +107,7 @@ param:
 
 comp_stmt: LeftBrace (stmt)* RightBrace;
 
-stmt:
+stmt:				// no need to override
 	expr_stmt		
 	| comp_stmt		
 	| selec_stmt	
@@ -116,17 +116,19 @@ stmt:
 	| var_decl		
 	;
 
-expr_stmt: expr Semi | Semi;
+expr_stmt: expr Semi | Semi;	// no need to override
 
-selec_stmt: If LeftParen expr RightParen stmt (Else stmt)?;
+selec_stmt: If LeftParen expr RightParen (comp_stmt | stmt) (Else (comp_stmt | stmt))?;
 
-iter_stmt: While LeftParen expr RightParen stmt;
+iter_stmt: While LeftParen expr RightParen (comp_stmt | stmt);
 
 return_stmt: Return (expr)? Semi;
 
 expr: var Assign expr | simple_expr;
 
-var: Identifier | Identifier LeftBracket expr RightBracket;
+var: Identifier 
+//	| Identifier LeftBracket expr RightBracket
+	;
 
 simple_expr: add_expr (relop add_expr)?;
 

@@ -43,7 +43,7 @@ int main(int argc, const char *argv[]) {
     std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
 
     my_visitor visitor;
-    visitor.visit(tree);
+    std::any test = visitor.visit(tree);
 
     if (argc > 1) delete is;
 

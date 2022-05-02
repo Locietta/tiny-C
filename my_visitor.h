@@ -102,4 +102,75 @@ public:
 
         return ret;
     }
+
+    std::any visitSelec_stmt(CParser::Selec_stmtContext *ctx) override {
+        auto ret = make_shared<Expr>(IfElse{});
+        auto &curr_node = ret->as<IfElse>();
+
+        // condition
+        curr_node.m_condi = expr_cast(visit(ctx->expr()));
+
+        // if path
+        any compound0 = visit(ctx->comp_stmt(0));
+        any stmt0 = visit(ctx->stmt(0));
+        if (compound0.has_value() && !stmt0.has_value())
+            curr_node.m_if = expr_cast(compound0);
+        else if (!compound0.has_value() && stmt0.has_value())
+            curr_node.m_if = expr_cast(stmt0);
+        else {
+            // error
+            assert(false);
+            unreachable();
+        }
+
+        // else path
+        if (ctx->Else()) {
+            any compound1 = visit(ctx->comp_stmt(1));
+            any stmt1 = visit(ctx->stmt(1));
+            if (compound1.has_value() && !stmt1.has_value())
+                curr_node.m_else = expr_cast(compound1);
+            else if (!compound1.has_value() && stmt1.has_value())
+                curr_node.m_else = expr_cast(stmt1);
+            else {
+                // error
+                assert(false);
+                unreachable();
+            }
+        }
+
+        return ret;
+    }
+
+    std::any visitIter_stmt(CParser::Iter_stmtContext *ctx) override {
+        auto ret = make_shared<Expr>(WhileLoop{});
+        auto &curr_node = ret->as<WhileLoop>();
+
+        // while condition
+        curr_node.m_condi = expr_cast(visit(ctx->expr()));
+
+        // loop body
+        any comp = visit(ctx->comp_stmt());
+        any stmt = visit(ctx->stmt());
+        if (comp.has_value() && !stmt.has_value()) {
+            curr_node.m_loop_body = expr_cast(comp);
+        } else if (!comp.has_value() && stmt.has_value()) {
+            curr_node.m_loop_body = expr_cast(stmt);
+        } else {
+            // error
+            assert(false);
+            unreachable();
+        }
+
+        return ret;
+    }
+
+    std::any visitReturn_stmt(CParser::Return_stmtContext *ctx) override {
+        auto ret = make_shared<Expr>(Return{});
+        auto &curr_node = ret->as<Return>();
+
+        any return_value = visit(ctx->expr());
+        if (return_value.has_value()) curr_node.m_expr = expr_cast(return_value);
+
+        return ret;
+    }
 };
