@@ -77,7 +77,7 @@ decl: var_decl | func_decl;
 
 simple_var_decl:
 	Identifier (Assign Constant)?	# no_array_decl
-	| Identifier LeftBracket Constant RightBracket (Assign init_list)? # array_decl
+//	| Identifier LeftBracket Constant RightBracket (Assign init_list)? # array_decl
 	; 
 
 init_list: LeftBrace (Constant (Comma Constant)*)? RightBrace;
@@ -107,7 +107,7 @@ param:
 
 comp_stmt: LeftBrace (stmt)* RightBrace;
 
-stmt:
+stmt:				// no need to override
 	expr_stmt		
 	| comp_stmt		
 	| selec_stmt	
@@ -116,19 +116,29 @@ stmt:
 	| var_decl		
 	;
 
-expr_stmt: expr Semi | Semi;
+expr_stmt: expr Semi | Semi;	// no need to override
 
-selec_stmt: If LeftParen expr RightParen stmt (Else stmt)?;
+selec_stmt: If LeftParen expr RightParen (comp_stmt | stmt) (Else (comp_stmt | stmt))?;
 
-iter_stmt: While LeftParen expr RightParen stmt;
+iter_stmt: While LeftParen expr RightParen (comp_stmt | stmt);
 
 return_stmt: Return (expr)? Semi;
 
-expr: var Assign expr | simple_expr;
+expr: var assign expr 
+	| oror_expr
+	;
 
-var: Identifier | Identifier LeftBracket expr RightBracket;
+var: Identifier;
 
-simple_expr: add_expr (relop add_expr)?;
+assign: Assign | PlusAssign | MinusAssign | MulAssign | DivAssign;
+
+oror_expr: (andand_expr OrOr)* andand_expr;
+
+andand_expr: (equal_expr AndAnd)* equal_expr;
+
+equal_expr: (compare_expr (Equal | NotEqual))* compare_expr;
+
+compare_expr: (add_expr relop)* add_expr;
 
 relop:
 	Less
@@ -150,4 +160,4 @@ args: arg_list?;
 
 arg_list: arg_list Comma expr | expr;
 
-// expr: expr (Plus | Minus) INT # AddSub | INT # Num ;
+//expr: expr (Plus | Minus) INT # AddSub | INT # Num ;
