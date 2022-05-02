@@ -1,4 +1,6 @@
-find_package(fmt)
+project(AST)
+
+find_package(fmt REQUIRED)
 
 add_library(AST AST.cpp)
 target_include_directories(AST

@@ -14,11 +14,11 @@ char z = '\n';
 float y = 0.5;
 
 int main(void) {
+    y = y;
     // printf("%d %c %f", x, z, y);
     // if (x == 2) {
     //     int a = 3;
     // } else {
-    y = y + x;
     // }
     return 0;
 }
