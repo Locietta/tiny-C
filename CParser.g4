@@ -71,7 +71,7 @@ void doAfter() {}
 
 prog: decl_list EOF;
 
-decl_list: decl_list decl | decl;
+decl_list: decl*;
 
 decl: var_decl | func_decl;
 
@@ -160,8 +160,6 @@ factor:
 
 call: Identifier LeftParen args RightParen;
 
-args: arg_list?;
-
-arg_list: arg_list Comma expr | expr;
+args: ((expr Comma)* expr)?;	// no need to override
 
 //expr: expr (Plus | Minus) INT # AddSub | INT # Num ;

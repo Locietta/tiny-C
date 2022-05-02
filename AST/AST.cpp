@@ -1,5 +1,6 @@
 #include "AST.h"
 #include <algorithm>
+#include <cstring>
 #include <fmt/core.h>
 #include <fmt/os.h>
 
@@ -24,14 +25,24 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         e,
         [this](ConstVar const &var) {
             if (var.is<char>()) {
-                print2buf(" {}", var.as<char>());
+                auto ch = var.as<char>();
+                if (ch == '\n') {
+                    print2buf(" <NewLine>");
+                } else if (ch == '\t') {
+                    print2buf(" <Tab>");
+                } else {
+                    print2buf(" {}", var.as<char>());
+                }
             } else if (var.is<int>()) {
                 print2buf(" {}", var.as<int>());
             } else if (var.is<float>()) {
                 print2buf(" {}", var.as<float>());
+            } else if (var.is<double>()) {
+                print2buf(" {}", var.as<double>());
             } else if (var.is<string>()) {
                 print2buf(" \"{}\"", var.as<string>());
             } else {
+                assert(false && "Unknown type, how?");
                 unreachable();
             }
         },
@@ -105,6 +116,18 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         });
 }
 
-void ASTPrinter::ToPNG(const char *filename) {}
+void ASTPrinter::ToPNG(const char *exe_path, const char *filename) {
+    sexp_fmt(*AST);
+    std::string out;
+    auto p_last = std::strrchr(exe_path, '/');
+    std::string_view exe_path_stripped{exe_path, static_cast<size_t>(p_last - exe_path)};
+    fmt::format_to(back_inserter(out),
+                   "echo \"{}\n{}\" | python {}/sexp_to_png.py",
+                   fmt::to_string(buffer),
+                   filename,
+                   exe_path_stripped);
+    fmt::print("{}", fmt::to_string(buffer));
+    system(out.c_str());
+}
 
-void ASTPrinter::ToPNG(const string &filename) {}
+void ASTPrinter::ToPNG(const char *exe_path, const string &filename) {}
