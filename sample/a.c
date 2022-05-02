@@ -8,6 +8,6 @@
 // //     return a * a;
 // // }
 
-int x=1;
-char z = '\n';
-float y = 0.5;
+// int x=1;
+// char z = '\n';
+// float y = 0.5;

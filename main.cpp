@@ -21,14 +21,15 @@ using namespace antlrcpp;
 using namespace antlr4;
 
 int main(int argc, const char *argv[]) {
+    std::shared_ptr<std::ifstream> file_holder;
     std::istream *is = nullptr;
     if (argc > 1) {
-        is = new std::ifstream(argv[1], std::ios_base::in);
-        if (!*is) {
-            fmt::print("Failed to open file {}! Aborting...", argv[1]);
-            delete is;
+        file_holder = make_shared<std::ifstream>(argv[1], std::ios_base::in);
+        if (!*file_holder) {
+            fmt::print("Failed to open file {}! Aborting...\n", argv[1]);
             return 1;
         }
+        is = file_holder.get();
     } else {
         is = &std::cin;
     }
@@ -50,10 +51,11 @@ int main(int argc, const char *argv[]) {
     my_visitor visitor;
     std::any test = visitor.visit(tree);
 
+    if (visitor.m_func_roots.empty() && visitor.m_global_vars.empty()) {
+        fmt::print("No AST is generated...\n");
+        return 0;
+    }
     ASTPrinter print{visitor.m_global_vars[0]};
     print.ToPNG(argv[0], "hahaha");
-
-    if (argc > 1) delete is;
-
     return 0;
 }
