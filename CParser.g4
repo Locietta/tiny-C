@@ -99,7 +99,7 @@ func_decl:
 
 params: param_list | (Void)?;
 
-param_list: param_list Comma param | param;
+param_list: (param Comma)* param;
 
 param:
 	type_spec Identifier

@@ -57,6 +57,57 @@ public:
         }
     }
 
+    std::any visitFunc_decl(CParser::Func_declContext *ctx) override {
+        auto ret = make_shared<Expr>(FuncDef{});
+        auto &curr_node = ret->as<FuncDef>();
+
+        curr_node.m_name = ctx->Identifier()->toString();
+
+        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
+        curr_node.m_return_type = type;
+
+        auto body = make_shared<Expr>(visit(ctx->comp_stmt()));
+        curr_node.m_func_body = body;
+
+        const auto &param_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
+        for (auto m_params : param_list) {
+            curr_node.m_para_list.push_back(make_shared<Expr>(param_list));
+        }
+
+        return ret;
+    }
+
+    std::any visitParams(CParser::ParamsContext *ctx) override {
+        std::vector<std::shared_ptr<Expr>> ret;
+
+        if (ctx->param_list()) {
+            ret.push_back(any_cast<shared_ptr<Expr>>(visit(ctx->param_list())));
+        }
+
+        return ret;
+    }
+
+    std::any visitParam_list(CParser::Param_listContext *ctx) override {
+        std::vector<std::shared_ptr<Expr>> ret;
+
+        for (const auto &params = ctx->param(); const auto &param : params) {
+            ret.push_back(any_cast<shared_ptr<Expr>>(visit(param)));
+        }
+
+        return ret;
+    }
+
+    std::any visitParam(CParser::ParamContext *ctx) override {
+        auto ret = make_shared<Expr>(Variable{
+            .m_var_name = ctx->Identifier()->toString(),
+        });
+        auto &curr_node = ret->as<Variable>();
+        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
+        curr_node.m_var_type = type;
+
+        return ret;
+    }
+
     std::any visitNo_array_decl(CParser::No_array_declContext *ctx) override {
         auto ret = make_shared<Expr>(Variable{
             .m_var_name = ctx->Identifier()->toString(),
