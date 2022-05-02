@@ -1,15 +1,19 @@
 #pragma once
 
+#include "constexpr_map.hpp"
 #include "utility.hpp"
 #include "variant_magic.hpp"
+
 #include <cassert>
+#include <fmt/core.h>
+#include <fmt/format.h>
 #include <memory>
 #include <string>
 #include <vector>
 
 // ------------------------------ Operator Type ---------------------------
 enum Operators {
-    Plus,
+    Plus = 0,
     PlusPlus,
     Minus,
     MinusMinus,
@@ -26,21 +30,48 @@ enum Operators {
     MinusAssign,
     MulAssign,
     DivAssign,
-    ModAssign
+    ModAssign,
 
+    enum_op_count
     // etc
 };
 
 enum DataTypes {
-    Void,
+    Void = 0,
     Char,
     Int,
     Float,
-    Double,
     String,
     Short,
-    Long
+    Long,
+    enum_type_count
     // etc
+};
+
+constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_map{
+    {Plus, "+"},
+    {PlusPlus, "++"},
+    {Minus, "-"},
+    {MinusMinus, "--"},
+    {Mul, "*"},
+    {Div, "/"},
+    {Mod, "%"},
+    {Equal, "=="},
+    {Greater, ">"},
+    {Less, "<"},
+    {GreaterEqual, ">="},
+    {LessEqual, "<="},
+    {NotEqual, "!="},
+};
+
+constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_map{
+    {Void, "void"},
+    {Char, "char"},
+    {Int, "int"},
+    {Float, "float"},
+    {String, "string"},
+    {Short, "short"},
+    {Long, "long"},
 };
 
 // ------------------------------ AST Nodes --------------------------------
@@ -48,21 +79,33 @@ enum DataTypes {
 /// Forward Declaration
 struct Expr; // generic node
 
-struct CompoundExpr : std::vector<std::shared_ptr<Expr>> {
-    using Base = std::vector<std::shared_ptr<Expr>>;
-    using Base::Base;
-    using Base::operator=;
-};
+using CompoundExpr = std::vector<std::shared_ptr<Expr>>;
 
 struct ConstVar : public std::variant<char, int, float, double, std::string> {
     using Base = std::variant<char, int, float, double, std::string>;
     using Base::Base;
     using Base::operator=;
+
+    template <typename T>
+    [[nodiscard]] constexpr bool is() const {
+        return std::holds_alternative<T>(*this);
+    }
+    template <typename T>
+    [[nodiscard]] constexpr T &as() {
+        if (auto *ptr = std::get_if<T>(this)) {
+            return *ptr;
+        } else {
+            assert(false && "Bad conversion for variant!");
+        }
+        unreachable();
+    }
 };
+
+using NameRef = std::string;
 
 struct Variable {
     enum DataTypes m_var_type;
-    std::string m_var_name;
+    NameRef m_var_name;
     std::shared_ptr<Expr> m_var_init; // ConstVar
 };
 
@@ -124,7 +167,7 @@ struct FuncCall {
 };
 
 struct FuncDef {
-    std::string m_name;
+    NameRef m_name;
     std::vector<std::shared_ptr<Expr>> m_para_list; // should put `Variable` here
     std::shared_ptr<Expr> m_func_body;
     enum DataTypes m_return_type;
@@ -132,7 +175,7 @@ struct FuncDef {
 
 namespace impl { // Magic Base
 using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
-                          FuncCall, FuncDef, CompoundExpr>;
+                          FuncCall, FuncDef, CompoundExpr, NameRef>;
 }
 
 // dummy warpper for variant
@@ -157,4 +200,17 @@ struct Expr : public impl::Base {
         }
         unreachable();
     }
+};
+
+class ASTPrinter {
+public:
+    const Expr &AST;
+    void ToPNG(const char *filename);
+    void ToPNG(const std::string &filename);
+
+    ASTPrinter(const Expr &e) : AST{e} {}
+
+private:
+    void sexp_fmt(const Expr &e);
+    fmt::memory_buffer buffer; // buf for graphviz file output
 };
