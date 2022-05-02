@@ -75,8 +75,8 @@ struct Expr; // generic node
 
 using CompoundExpr = std::vector<std::shared_ptr<Expr>>;
 
-struct ConstVar : public std::variant<char, int, float, std::string> {
-    using Base = std::variant<char, int, float, std::string>;
+struct ConstVar : public std::variant<char, int, float, double, std::string> {
+    using Base = std::variant<char, int, float, double, std::string>;
     using Base::Base;
     using Base::operator=;
 
