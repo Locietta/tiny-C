@@ -27,14 +27,14 @@ enum Operators {
     GreaterEqual, // >=
     LessEqual,    // <=
     NotEqual,     // !=
-    PlusAssign,
-    MinusAssign,
-    MulAssign,
-    DivAssign,
-    ModAssign,
-    Assign,
-    OrOr,
-    AndAnd,
+    PlusAssign,   // +=
+    MinusAssign,  // -=
+    MulAssign,    // *=
+    DivAssign,    // /=
+    ModAssign,    // %=
+    Assign,       // =
+    OrOr,         // ||
+    AndAnd,       // &&
 
     enum_op_count
     // etc
@@ -52,21 +52,14 @@ enum DataTypes {
     // etc
 };
 
-constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_map{
-    {Plus, "+"},
-    {PlusPlus, "++"},
-    {Minus, "-"},
-    {MinusMinus, "--"},
-    {Mul, "*"},
-    {Div, "/"},
-    {Mod, "%"},
-    {Equal, "=="},
-    {Greater, ">"},
-    {Less, "<"},
-    {GreaterEqual, ">="},
-    {LessEqual, "<="},
-    {NotEqual, "!="},
-};
+constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_map{{
+    {Plus, "+"},       {PlusPlus, "++"},   {Minus, "-"},         {MinusMinus, "--"},
+    {Mul, "*"},        {Div, "/"},         {Mod, "%"},           {Equal, "=="},
+    {Greater, ">"},    {Less, "<"},        {GreaterEqual, ">="}, {LessEqual, "<="},
+    {NotEqual, "!="},  {PlusAssign, "+="}, {MinusAssign, "-="},  {MulAssign, "*="},
+    {DivAssign, "/="}, {ModAssign, "%="},  {Assign, "="},        {OrOr, "||"},
+    {AndAnd, "&&"},
+}};
 
 constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_map{
     {Void, "void"},
@@ -77,6 +70,12 @@ constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count>
     {Short, "short"},
     {Long, "long"},
 };
+
+constexpr auto check = []() { // magic: compile-time check
+    static_assert(op_map.sz == enum_op_count, "Incomplete dispatch for op_enum->string map!");
+    static_assert(type_map.sz == enum_type_count, "Incomplete dispatch for type_enum->string map!");
+    return true; // no-use
+}();
 
 // ------------------------------ AST Nodes --------------------------------
 
