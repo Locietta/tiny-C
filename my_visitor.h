@@ -58,9 +58,10 @@ public:
     }
 
     std::any visitFunc_decl(CParser::Func_declContext *ctx) override {
+        is_global = false;
+
         auto ret = make_shared<Expr>(FuncDef{});
         auto &curr_node = ret->as<FuncDef>();
-
         curr_node.m_name = ctx->Identifier()->toString();
 
         auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
@@ -71,6 +72,8 @@ public:
 
         curr_node.m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
         m_func_roots.push_back(ret);
+
+        is_global = true;
         return ret;
     }
 
