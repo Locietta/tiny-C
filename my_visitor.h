@@ -69,10 +69,7 @@ public:
         auto body = any_cast<shared_ptr<Expr>>(visit(ctx->comp_stmt()));
         curr_node.m_func_body = body;
 
-        const auto &param_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
-        for (auto m_params : param_list) {
-            curr_node.m_para_list.push_back(make_shared<Expr>(param_list));
-        }
+        curr_node.m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
         m_func_roots.push_back(ret);
         return ret;
     }
@@ -81,9 +78,11 @@ public:
         std::vector<std::shared_ptr<Expr>> ret;
 
         if (ctx->param_list()) {
-            ret.push_back(any_cast<shared_ptr<Expr>>(visit(ctx->param_list())));
+            ret = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->param_list()));
+        } else if (ctx->Void()) {
+            ret.emplace_back(
+                make_shared<Expr>(Variable{.m_var_type = Void, .m_var_name = "<void>"}));
         }
-
         return ret;
     }
 
