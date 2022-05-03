@@ -67,7 +67,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         [this](Binary const &bin) {
             print2buf(" (binary:{}", op_map[bin.m_operator]);
             sexp_fmt(*bin.m_operand1);
-            sexp_fmt(*bin.m_operand1);
+            sexp_fmt(*bin.m_operand2);
             print2buf(")");
         },
         [this](IfElse const &branch) {
