@@ -468,17 +468,21 @@ public:
         auto &curr_node = ret->as<ConstVar>();
 
         string const_text = ctx->Constant()->getText();
-        if (const_text[0] == '\'') {
-            if (const_text == R"('\n')")
-                curr_node = '\n';
-            else if (const_text == R"('\t')")
-                curr_node = '\t';
-            else if (const_text == R"('\\')")
-                curr_node = '\\';
-            else {
-                // error
-                assert(false);
-                unreachable();
+        if (const_text.front() == '\'') {
+            if (const_text[1] != '\\') { // non-escape
+                curr_node = const_text[1];
+            } else { // escapes
+                char hint = const_text[2];
+                if (hint == 'n') {
+                    curr_node = '\n';
+                } else if (hint == 't') {
+                    curr_node = '\t';
+                } else if (hint == '\\') {
+                    curr_node = '\\';
+                } else {
+                    assert(false && "Unsupported escape sequence!");
+                    unreachable();
+                }
             }
         } else if (const_text.find('.') == std::string::npos) {
             curr_node = atoi(const_text.c_str());
