@@ -47,6 +47,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             }
         },
         [this](Variable const &var) {
+            assert(!var.m_var_name.empty() && "Var with no name OR default empty Expr");
             print2buf(" (var:{}", var.m_var_name);
             print2buf(" type:{}", type_map[var.m_var_type]);
             if (var.m_var_init) sexp_fmt(*var.m_var_init);

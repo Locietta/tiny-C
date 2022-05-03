@@ -1,4 +1,5 @@
 #pragma once
+#include <cassert>
 #include <type_traits>
 #include <variant>
 
@@ -17,17 +18,18 @@ R match_impl(U &&u, Fs... arms) {
     struct overloaded : public Fs... {
         using Fs::operator()...;
     };
+    assert(!u.valueless_by_exception() && "empty variant!");
     using CheckArgs = std::conjunction<std::is_invocable<overloaded, Ts>...>;
     static_assert(CheckArgs::value, "Missing matching cases");
-    if constexpr (!CheckArgs::value)
-        return quiet_declval<R>(); // suppress more errors
-    else {
+    if constexpr (!CheckArgs::value) {
+        return quiet_declval<R>();
+    } else {
         using CheckRet =
             std::conjunction<std::is_convertible<std::invoke_result_t<overloaded, Ts>, R>...>;
         static_assert(CheckRet::value, "Return type not compatible");
-        if constexpr (!CheckRet::value)
-            return quiet_declval<R>(); // suppress more errors
-        else {
+        if constexpr (!CheckRet::value) {
+            return quiet_declval<R>();
+        } else {
             overloaded dispatcher{arms...};
             return std::visit(
                 [&](auto &&var) -> R { return dispatcher(std::forward<decltype(var)>(var)); },
