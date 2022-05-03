@@ -162,13 +162,11 @@ public:
         curr_node.m_condi = expr_cast(visit(ctx->expr()));
 
         // if path
-        any compound0 = visit(ctx->comp_stmt(0));
-        any stmt0 = visit(ctx->stmt(0));
-        if (compound0.has_value() && !stmt0.has_value())
-            curr_node.m_if = expr_cast(compound0);
-        else if (!compound0.has_value() && stmt0.has_value())
-            curr_node.m_if = expr_cast(stmt0);
-        else {
+        if (auto p_comp0 = ctx->comp_stmt(0)) {
+            curr_node.m_if = expr_cast(visit(p_comp0));
+        } else if (auto p_stmt0 = ctx->stmt(0)) {
+            curr_node.m_if = expr_cast(visit(p_stmt0));
+        } else {
             // error
             assert(false);
             unreachable();
@@ -176,13 +174,11 @@ public:
 
         // else path
         if (ctx->Else()) {
-            any compound1 = visit(ctx->comp_stmt(1));
-            any stmt1 = visit(ctx->stmt(1));
-            if (compound1.has_value() && !stmt1.has_value())
-                curr_node.m_else = expr_cast(compound1);
-            else if (!compound1.has_value() && stmt1.has_value())
-                curr_node.m_else = expr_cast(stmt1);
-            else {
+            if (auto p_comp1 = ctx->comp_stmt(1)) {
+                curr_node.m_else = expr_cast(visit(p_comp1));
+            } else if (auto p_stmt1 = ctx->stmt(1)) {
+                curr_node.m_else = expr_cast(visit(p_stmt1));
+            } else {
                 // error
                 assert(false);
                 unreachable();

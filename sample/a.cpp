@@ -14,11 +14,28 @@ char z = '\n';
 float y = 0.5;
 
 int main(void) {
-    y = y;
-    // printf("%d %c %f", x, z, y);
+    // expresions
+    // x = x + x;
+    // x = x - x;
+    // x = x * x;
+    // x = x / x;
+    // x = x % x;
+    // x == x;
+    // x != x;
+    // x > 1 || x < 1;
+    // x >= 1 && x <= 1;
+
+    if (x == 2) {
+        x = 2;
+    }
+
     // if (x == 2) {
-    //     int a = 3;
-    // } else {
+    //     // int a = 3;
     // }
+    // else {
+    //     y = x + y;
+    // }
+
+    // printf("%d %c %f", x, z, y);
     return 0;
 }
