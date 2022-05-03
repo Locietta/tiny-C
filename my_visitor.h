@@ -234,6 +234,37 @@ public:
         return ret;
     }
 
+    std::any visitUnary_expr(CParser::Unary_exprContext *ctx) override {
+        if (ctx->oror_expr()) {
+            return visit(ctx->oror_expr());
+        } else {
+            auto ret = make_shared<Expr>(Unary{});
+            auto &curr_node = ret->as<Unary>();
+
+            curr_node.m_operand = expr_cast(visit(ctx->unary_expr()));
+            curr_node.m_operator = any_cast<enum Operators>(visit(ctx->unary_operator()));
+
+            return ret;
+        }
+    }
+
+    std::any visitUnary_operator(CParser::Unary_operatorContext *ctx) override {
+        enum Operators ret;
+        if (ctx->Not()) {
+            ret = Not;
+        } else if (ctx->Plus()) {
+            ret = Plus;
+        } else if (ctx->Minus()) {
+            ret = Minus;
+        } else {
+            // error
+            assert(false);
+            unreachable();
+        }
+
+        return ret;
+    }
+
     std::any visitVar(CParser::VarContext *ctx) override {
         auto ret = make_shared<Expr>(NameRef{});
         auto &curr_node = ret->as<NameRef>();
@@ -264,130 +295,87 @@ public:
     }
 
     std::any visitOror_expr(CParser::Oror_exprContext *ctx) override {
-        if (ctx->andand_expr().size() > 1) {
-            // has ||
+        if (ctx->oror_expr()) {
+            // has operator
             auto ret = make_shared<Expr>(Binary{});
-            auto curr_node_ptr = get_if<Binary>(ret.get());
+            auto &curr_node = ret->as<Binary>();
 
-            for (int i = ctx->andand_expr().size() - 1; i >= 1; i--) {
-                curr_node_ptr->m_operator = OrOr;
-                curr_node_ptr->m_operand2 = expr_cast(visit(ctx->andand_expr(i)));
-
-                if (i > 1) {
-                    // construct subtree
-                    auto left_child = make_shared<Expr>(Binary{});
-                    curr_node_ptr->m_operand1 = left_child;
-                    curr_node_ptr = get_if<Binary>(left_child.get());
-                } else {
-                    // no subtree but one node
-                    curr_node_ptr->m_operand1 = expr_cast(visit(ctx->andand_expr(0)));
-                }
-            }
+            // operator
+            curr_node.m_operator = OrOr;
+            // operand 2
+            curr_node.m_operand2 = expr_cast(visit(ctx->andand_expr()));
+            // operand 1
+            curr_node.m_operand1 = expr_cast(visit(ctx->oror_expr()));
 
             return ret;
         } else {
-            // no ||
-            return visit(ctx->andand_expr(0));
+            return visit(ctx->andand_expr());
         }
     }
 
     std::any visitAndand_expr(CParser::Andand_exprContext *ctx) override {
-        if (ctx->equal_expr().size() > 1) {
-            // has &&
+        if (ctx->andand_expr()) {
+            // has operator
             auto ret = make_shared<Expr>(Binary{});
-            auto curr_node_ptr = get_if<Binary>(ret.get());
+            auto &curr_node = ret->as<Binary>();
 
-            for (int i = ctx->equal_expr().size() - 1; i >= 1; i--) {
-                curr_node_ptr->m_operator = AndAnd;
-                curr_node_ptr->m_operand2 = expr_cast(visit(ctx->equal_expr(i)));
-
-                if (i > 1) {
-                    // construct subtree
-                    auto left_child = make_shared<Expr>(Binary{});
-                    curr_node_ptr->m_operand1 = left_child;
-                    curr_node_ptr = get_if<Binary>(left_child.get());
-                } else {
-                    // no subtree but one node
-                    curr_node_ptr->m_operand1 = expr_cast(visit(ctx->equal_expr(0)));
-                }
-            }
+            // operator
+            curr_node.m_operator = AndAnd;
+            // operand 2
+            curr_node.m_operand2 = expr_cast(visit(ctx->equal_expr()));
+            // operand 1
+            curr_node.m_operand1 = expr_cast(visit(ctx->andand_expr()));
 
             return ret;
         } else {
-            // no &&
-            return visit(ctx->equal_expr(0));
+            return visit(ctx->equal_expr());
         }
     }
 
     std::any visitEqual_expr(CParser::Equal_exprContext *ctx) override {
-        if (ctx->compare_expr().size() > 1) {
-            // has ==
+        if (ctx->equal_expr()) {
+            // has operator
             auto ret = make_shared<Expr>(Binary{});
-            auto curr_node_ptr = get_if<Binary>(ret.get());
+            auto &curr_node = ret->as<Binary>();
 
-            for (int i = ctx->compare_expr().size() - 1; i >= 1; i--) {
-                // assign operator
-                if (ctx->Equal(i - 1)) {
-                    curr_node_ptr->m_operator = Equal;
-                } else if (ctx->NotEqual(i - 1)) {
-                    curr_node_ptr->m_operator = NotEqual;
-                } else {
-                    // error
-                    assert(false);
-                    unreachable();
-                }
-
-                // right child
-                curr_node_ptr->m_operand2 = expr_cast(visit(ctx->compare_expr(i)));
-
-                // left child
-                if (i > 1) {
-                    // construct subtree
-                    auto left_child = make_shared<Expr>(Binary{});
-                    curr_node_ptr->m_operand1 = left_child;
-                    curr_node_ptr = get_if<Binary>(left_child.get());
-                } else {
-                    // no subtree but one node
-                    curr_node_ptr->m_operand1 = expr_cast(visit(ctx->compare_expr(0)));
-                }
+            // operator
+            if (ctx->Equal()) {
+                curr_node.m_operator = Equal;
+            } else if (ctx->NotEqual()) {
+                curr_node.m_operator = NotEqual;
+            } else {
+                // error
+                assert(false);
+                unreachable();
             }
+
+            // operand 2
+            curr_node.m_operand2 = expr_cast(visit(ctx->compare_expr()));
+            // operand 1
+            curr_node.m_operand1 = expr_cast(visit(ctx->equal_expr()));
 
             return ret;
         } else {
-            // no ==
-            return visit(ctx->compare_expr(0));
+            return visit(ctx->compare_expr());
         }
     }
 
     std::any visitCompare_expr(CParser::Compare_exprContext *ctx) override {
-        if (ctx->add_expr().size() > 1) {
+        if (ctx->compare_expr()) {
             // has operator
             auto ret = make_shared<Expr>(Binary{});
-            auto curr_node_ptr = get_if<Binary>(ret.get());
+            auto &curr_node = ret->as<Binary>();
 
-            for (int i = ctx->add_expr().size() - 1; i >= 1; i--) {
-                // assign operator
-                curr_node_ptr->m_operator = any_cast<enum Operators>(visit(ctx->relop(i - 1)));
-
-                // right child
-                curr_node_ptr->m_operand2 = expr_cast(visit(ctx->add_expr(i)));
-
-                // left child
-                if (i > 1) {
-                    // construct subtree
-                    auto left_child = make_shared<Expr>(Binary{});
-                    curr_node_ptr->m_operand1 = left_child;
-                    curr_node_ptr = get_if<Binary>(left_child.get());
-                } else {
-                    // no subtree but one node
-                    curr_node_ptr->m_operand1 = expr_cast(visit(ctx->add_expr(0)));
-                }
-            }
+            // operator
+            curr_node.m_operator = any_cast<enum Operators>(visit(ctx->relop()));
+            // operand 2
+            curr_node.m_operand2 = expr_cast(visit(ctx->add_expr()));
+            // operand 1
+            curr_node.m_operand1 = expr_cast(visit(ctx->compare_expr()));
 
             return ret;
         } else {
-            // no operator
-            return visit(ctx->add_expr(0));
+            return visit(ctx->add_expr());
         }
     }
 
