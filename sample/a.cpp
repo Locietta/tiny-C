@@ -7,4 +7,6 @@ int main(void) {
     x = --x;
     x = !!x;
     x = +x;
+    break;
+    continue;
 }

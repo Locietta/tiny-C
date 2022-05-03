@@ -114,7 +114,13 @@ stmt:				// no need to override
 	| iter_stmt		
 	| return_stmt	
 	| var_decl		
+	| break_stmt
+	| continue_stmt
 	;
+
+break_stmt: Break Semi;
+
+continue_stmt: Continue Semi;
 
 expr_stmt: expr Semi | Semi;	
 

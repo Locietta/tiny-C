@@ -510,4 +510,16 @@ public:
         cout << "unexpected call func:visitArgs, by cdh" << endl;
         return visitChildren(ctx);
     }
+
+    std::any visitBreak_stmt(CParser::Break_stmtContext *ctx) override {
+        auto ret = make_shared<Expr>(Break{});
+        auto &curr_node = ret->as<Break>();
+        return ret;
+    }
+
+    std::any visitContinue_stmt(CParser::Continue_stmtContext *ctx) override {
+        auto ret = make_shared<Expr>(Continue{});
+        auto &curr_node = ret->as<Continue>();
+        return ret;
+    }
 };
