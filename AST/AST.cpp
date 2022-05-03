@@ -115,12 +115,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             print2buf(")");
         },
         [this](Break const &) { print2buf(" [BREAK]"); },
-        [this](Continue const &) { print2buf(" [CONTINUE]"); },
-        [this](auto const &) {
-            // ?!
-            assert(false && "something wrong with type match?");
-            unreachable();
-        });
+        [this](Continue const &) { print2buf(" [CONTINUE]"); });
 }
 
 void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {
