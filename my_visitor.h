@@ -234,6 +234,37 @@ public:
         return ret;
     }
 
+    std::any visitUnary_expr(CParser::Unary_exprContext *ctx) override {
+        if (ctx->oror_expr()) {
+            return visit(ctx->oror_expr());
+        } else {
+            auto ret = make_shared<Expr>(Unary{});
+            auto &curr_node = ret->as<Unary>();
+
+            curr_node.m_operand = expr_cast(visit(ctx->unary_expr()));
+            curr_node.m_operator = any_cast<enum Operators>(visit(ctx->unary_operator()));
+
+            return ret;
+        }
+    }
+
+    std::any visitUnary_operator(CParser::Unary_operatorContext *ctx) override {
+        enum Operators ret;
+        if (ctx->Not()) {
+            ret = Not;
+        } else if (ctx->Plus()) {
+            ret = Plus;
+        } else if (ctx->Minus()) {
+            ret = Minus;
+        } else {
+            // error
+            assert(false);
+            unreachable();
+        }
+
+        return ret;
+    }
+
     std::any visitVar(CParser::VarContext *ctx) override {
         auto ret = make_shared<Expr>(NameRef{});
         auto &curr_node = ret->as<NameRef>();

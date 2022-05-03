@@ -4,6 +4,7 @@ char z = '\n';
 float y = 0.5;
 
 int main(void) {
-    y = 2.0;
-    return 0;
+    x = -x;
+    x = !!x;
+    x = +x;
 }

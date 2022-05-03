@@ -125,8 +125,12 @@ iter_stmt: While LeftParen expr RightParen (comp_stmt | stmt);
 return_stmt: Return (expr)? Semi;
 
 expr: var assign expr 	# assign_expr
-	| oror_expr			# not_assign_expr // no need to override
+	| unary_expr	# not_assign_expr // no need to override
 	;
+
+unary_expr: unary_operator unary_expr | oror_expr;
+
+unary_operator: Not | Plus | Minus;
 
 var: Identifier;
 

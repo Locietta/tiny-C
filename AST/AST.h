@@ -35,6 +35,7 @@ enum Operators {
     Assign,       // =
     OrOr,         // ||
     AndAnd,       // &&
+    Not,          // !
 
     enum_op_count
     // etc
@@ -58,7 +59,7 @@ constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> o
     {Greater, ">"},    {Less, "<"},        {GreaterEqual, ">="}, {LessEqual, "<="},
     {NotEqual, "!="},  {PlusAssign, "+="}, {MinusAssign, "-="},  {MulAssign, "*="},
     {DivAssign, "/="}, {ModAssign, "%="},  {Assign, "="},        {OrOr, "||"},
-    {AndAnd, "&&"},
+    {AndAnd, "&&"},    {Not, "!"},
 }};
 
 constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_map{
