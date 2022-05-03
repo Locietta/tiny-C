@@ -145,6 +145,10 @@ struct WhileLoop {
     std::shared_ptr<Expr> m_loop_body;
 };
 
+struct Break {};
+
+struct Continue {};
+
 /**
  * @code:
  * for (init;condition;iter) {
@@ -181,7 +185,7 @@ struct FuncDef {
 
 namespace impl { // Magic Base
 using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
-                          FuncCall, FuncDef, CompoundExpr, NameRef>;
+                          FuncCall, FuncDef, CompoundExpr, NameRef, Continue, Break>;
 }
 
 // dummy warpper for variant

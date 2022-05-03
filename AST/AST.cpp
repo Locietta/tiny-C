@@ -114,6 +114,8 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             }
             print2buf(")");
         },
+        [this](Break const &) { print2buf(" [BREAK]"); },
+        [this](Continue const &) { print2buf(" [CONTINUE]"); },
         [this](auto const &) {
             // ?!
             assert(false && "something wrong with type match?");
@@ -129,7 +131,6 @@ void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {
         system(out.c_str());
         out.clear();
     }
-
     fmt::format_to(back_inserter(out),
                    "echo \"{}\n{}\" | python {}/sexp_to_png.py",
                    fmt::to_string(buffer),
