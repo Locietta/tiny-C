@@ -132,13 +132,13 @@ var: Identifier;
 
 assign: Assign | PlusAssign | MinusAssign | MulAssign | DivAssign | ModAssign;
 
-oror_expr: (andand_expr OrOr)* andand_expr;
+oror_expr: oror_expr OrOr andand_expr | andand_expr;
 
-andand_expr: (equal_expr AndAnd)* equal_expr;
+andand_expr: andand_expr AndAnd equal_expr | equal_expr;
 
-equal_expr: (compare_expr (Equal | NotEqual))* compare_expr;
+equal_expr: equal_expr (Equal | NotEqual) compare_expr | compare_expr;
 
-compare_expr: (add_expr relop)* add_expr;
+compare_expr: compare_expr relop add_expr | add_expr;
 
 relop:
 	Less
@@ -152,7 +152,7 @@ add_expr: add_expr (Plus | Minus) term | term;
 term: term (Mul | Div | Mod) factor | factor;
 
 factor: 
-	LeftParen expr RightParen 	#paren_factor
+	LeftParen expr RightParen 	# paren_factor
 	| var 						# var_factor
 	| call 						# call_factor	// no need to override
 	| Constant					# const_factor
