@@ -116,7 +116,15 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             print2buf(")");
         },
         [this](Break const &) { print2buf(" [BREAK]"); },
-        [this](Continue const &) { print2buf(" [CONTINUE]"); });
+        [this](Continue const &) { print2buf(" [CONTINUE]"); },
+        [this](ForLoop const &loop) {
+            print2buf(" (for");
+            sexp_fmt(*loop.m_init);
+            sexp_fmt(*loop.m_condi);
+            sexp_fmt(*loop.m_iter);
+            sexp_fmt(*loop.m_loop_body);
+            print2buf(")");
+        });
 }
 
 void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {

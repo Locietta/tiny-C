@@ -22,6 +22,10 @@ int main(void) {
         x = 2;
     } else
         x = 3;
+    int a;
+    for (a = 1; a < 10; a++) {
+        x += a;
+    }
 
     char ch = 'c';
 

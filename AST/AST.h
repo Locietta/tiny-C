@@ -159,10 +159,10 @@ struct Continue {};
  *
  */
 struct ForLoop {
-    std::shared_ptr<Expr> m_init;  // init
-    std::shared_ptr<Expr> m_condi; // condition
-    std::shared_ptr<Expr> m_iter;
-    std::shared_ptr<Expr> m_loop_body; // loop body + iter
+    std::shared_ptr<Expr> m_init;      // init
+    std::shared_ptr<Expr> m_condi;     // condition
+    std::shared_ptr<Expr> m_iter;      // iter
+    std::shared_ptr<Expr> m_loop_body; // loop body
 };
 
 struct Return {
@@ -183,7 +183,7 @@ struct FuncDef {
 
 namespace impl { // Magic Base
 using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
-                          FuncCall, FuncDef, CompoundExpr, NameRef, Continue, Break>;
+                          FuncCall, FuncDef, CompoundExpr, NameRef, Continue, Break, ForLoop>;
 }
 
 // dummy warpper for variant
