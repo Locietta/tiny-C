@@ -114,6 +114,7 @@ struct Variable {
     enum DataTypes m_var_type;
     NameRef m_var_name;
     std::shared_ptr<Expr> m_var_init; // ConstVar
+    // int m_array_size;   // if variable is not array, then size = 0
 };
 
 struct InitExpr : public std::vector<std::shared_ptr<Expr>> {
