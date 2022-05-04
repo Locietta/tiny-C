@@ -13,6 +13,10 @@ int f(int n) {
     }
 }
 
+int add(int a, int b) {
+    return a + b;
+}
+
 int main(void) {
     if (x == 1) {
         x = 2;
