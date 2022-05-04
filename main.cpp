@@ -1,15 +1,5 @@
-/* Copyright (c) 2012-2017 The ANTLR Project. All rights reserved.
- * Use of this file is governed by the BSD 3-clause license that
- * can be found in the LICENSE.txt file in the project root.
- */
-
-//
-//  main.cpp
-//  antlr4-cpp-demo
-//
-//  Created by Mike Lischke on 13.03.16.
-//
 #include <iostream>
+#include <memory>
 
 #include "CLexer.h"
 #include "CParser.h"
@@ -19,8 +9,21 @@
 using namespace antlrcpp;
 using namespace antlr4;
 
-int main(int, const char **) {
-    ANTLRInputStream input("1+2-5+100");
+int main(int argc, const char *argv[]) {
+    std::shared_ptr<std::ifstream> file_holder;
+    std::istream *is = nullptr;
+    if (argc > 1) {
+        file_holder = make_shared<std::ifstream>(argv[1], std::ios_base::in);
+        if (!*file_holder) {
+            fmt::print("Failed to open file {}! Aborting...\n", argv[1]);
+            return 1;
+        }
+        is = file_holder.get();
+    } else {
+        is = &std::cin;
+    }
+
+    ANTLRInputStream input(*is);
     CLexer lexer(&input);
     CommonTokenStream tokens(&lexer);
 
@@ -35,7 +38,19 @@ int main(int, const char **) {
     // std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
 
     my_visitor visitor;
-    std::cout << std::any_cast<int>(visitor.visit(tree)) << std::endl;
+    std::any test = visitor.visit(tree);
 
+    for (int i = 0; const auto &func : visitor.m_func_roots) {
+        ASTPrinter print_func{func};
+        std::string pic_path;
+        fmt::format_to(std::back_inserter(pic_path), "output/func{}", i++);
+        print_func.ToPNG(argv[0], move(pic_path));
+    }
+    for (int i = 0; const auto &var : visitor.m_global_vars) {
+        ASTPrinter print_var{var};
+        std::string pic_path;
+        fmt::format_to(std::back_inserter(pic_path), "output/var{}", i++);
+        print_var.ToPNG(argv[0], move(pic_path));
+    }
     return 0;
 }

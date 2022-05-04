@@ -12,7 +12,8 @@
 	"extensions": [
 		"ms-vscode.cpptools",
         "ms-vscode.cmake-tools",
-        "mike-lischke.vscode-antlr4"
+        "mike-lischke.vscode-antlr4",
+		"vadimcn.vscode-lldb"
 	],
 
 	// Use 'forwardPorts' to make a list of ports inside the container available locally.
