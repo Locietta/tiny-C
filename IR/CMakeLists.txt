@@ -24,7 +24,7 @@ llvm_map_components_to_libnames(llvm_libs
     irreader
 )
 
-add_library(IR IRBuilder.cpp)
+add_library(IR IRGenerator.cpp IRGenerator.h)
 target_include_directories(
     IR
     INTERFACE ${CMAKE_CURRENT_LIST_DIR}
@@ -34,4 +34,4 @@ target_link_libraries(
     PRIVATE AST
     PUBLIC ${llvm_libs}
 )
-target_precompile_headers(IR PRIVATE [[pch.h]])
+target_precompile_headers(IR PRIVATE ${CMAKE_CURRENT_LIST_DIR}/pch.h)
