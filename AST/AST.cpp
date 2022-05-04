@@ -119,9 +119,9 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         [this](Continue const &) { print2buf(" [CONTINUE]"); },
         [this](ForLoop const &loop) {
             print2buf(" (for");
-            sexp_fmt(*loop.m_init);
-            sexp_fmt(*loop.m_condi);
-            sexp_fmt(*loop.m_iter);
+            if (loop.m_init) sexp_fmt(*loop.m_init);
+            if (loop.m_condi) sexp_fmt(*loop.m_condi);
+            if (loop.m_iter) sexp_fmt(*loop.m_iter);
             sexp_fmt(*loop.m_loop_body);
             print2buf(")");
         });
