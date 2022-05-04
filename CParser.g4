@@ -126,7 +126,17 @@ expr_stmt: expr Semi | Semi;
 
 selec_stmt: If LeftParen expr RightParen stmt  (Else stmt )?;
 
-iter_stmt: While LeftParen expr RightParen stmt;
+iter_stmt: while_loop | for_loop; // no need to override
+
+while_loop: While LeftParen expr RightParen stmt;
+
+for_loop: For LeftParen (for_init)? Semi (for_condi)? Semi (for_iter)? RightParen stmt;
+
+for_init: expr | var_decl; // no need to override
+
+for_condi: expr; // no need to override
+
+for_iter: expr; // no need to override
 
 return_stmt: Return (expr)? Semi;
 

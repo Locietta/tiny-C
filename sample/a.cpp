@@ -3,31 +3,10 @@ int x = 1;
 char z = '\n';
 float y = 0.5;
 
-int f(int n) {
-    if (n == 0) {
-        return 0;
-    } else if (n == 1) {
-        return 1;
-    } else {
-        return f(n - 1) + f(n - 2);
-    }
-}
-
-int add(int a, int b) {
-    return a + b;
-}
-
 int main(void) {
-    if (x == 1) {
-        x = 2;
-    } else
-        x = 3;
-    int a;
-    for (a = 1; a < 10; a++) {
-        x += a;
+    for (int i = 0;; i = i + 1) {
+        x = x + 2;
     }
-
-    char ch = 'c';
 
     return 0;
 }
