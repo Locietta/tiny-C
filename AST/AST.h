@@ -158,16 +158,12 @@ struct Continue {};
  * }
  *
  */
-// struct ForLoop {
-//     std::shared_ptr<Expr> m_init; // init
-//     std::shared_ptr<Expr> m_condi; // condition
-//     std::vector<std::shared_ptr<Expr>> m_loop_body; // loop body + iter
-// };
-
-// struct DoWhileLoop {
-//     std::shared_ptr<Expr> m_condi;
-//     std::vector<std::shared_ptr<Expr>> m_loop_body;
-// };
+struct ForLoop {
+    std::shared_ptr<Expr> m_init;  // init
+    std::shared_ptr<Expr> m_condi; // condition
+    std::shared_ptr<Expr> m_iter;
+    std::shared_ptr<Expr> m_loop_body; // loop body + iter
+};
 
 struct Return {
     std::shared_ptr<Expr> m_expr;
