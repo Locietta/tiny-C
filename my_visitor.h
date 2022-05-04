@@ -498,4 +498,12 @@ public:
         auto &curr_node = ret->as<Continue>();
         return ret;
     }
+
+    std::any visitStmt_var_decl(CParser::Stmt_var_declContext *ctx) override {
+        return visit(ctx->var_decl());
+    }
+
+    std::any visitDecl_var(CParser::Decl_varContext *ctx) override {
+        return visit(ctx->var_decl());
+    }
 };

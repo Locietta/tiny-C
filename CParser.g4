@@ -73,7 +73,9 @@ prog: decl_list EOF;
 
 decl_list: decl*;
 
-decl: var_decl | func_decl;
+decl: var_decl Semi 	# decl_var
+	| func_decl			# decl_func
+	;
 
 simple_var_decl:
 	Identifier (Assign Constant)?	# no_array_decl
@@ -83,7 +85,7 @@ simple_var_decl:
 //init_list: LeftBrace (Constant (Comma Constant)*)? RightBrace;
 
 var_decl:
-	type_spec simple_var_decl (Comma simple_var_decl)* Semi;
+	type_spec simple_var_decl (Comma simple_var_decl)* ;
 
 type_spec:
 	Char
@@ -107,15 +109,15 @@ param:
 
 comp_stmt: LeftBrace (stmt)* RightBrace;
 
-stmt:				// no need to override
-	expr_stmt		
-	| comp_stmt		
-	| selec_stmt	
-	| iter_stmt		
-	| return_stmt	
-	| var_decl		
-	| break_stmt
-	| continue_stmt
+stmt:				
+	expr_stmt		# stmt_expr
+	| comp_stmt		# stmt_comp
+	| selec_stmt	# stmt_selec
+	| iter_stmt		# stmt_iter
+	| return_stmt	# stmt_return
+	| var_decl Semi	# stmt_var_decl
+	| break_stmt	# stmt_break
+	| continue_stmt	# stmt_continue
 	;
 
 break_stmt: Break Semi;
