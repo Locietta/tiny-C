@@ -164,27 +164,11 @@ public:
         curr_node.m_condi = expr_cast(visit(ctx->expr()));
 
         // if path
-        if (auto p_comp0 = ctx->comp_stmt(0)) {
-            curr_node.m_if = expr_cast(visit(p_comp0));
-        } else if (auto p_stmt0 = ctx->stmt(0)) {
-            curr_node.m_if = expr_cast(visit(p_stmt0));
-        } else {
-            // error
-            assert(false);
-            unreachable();
-        }
+        curr_node.m_if = expr_cast(visit(ctx->stmt(0)));
 
         // else path
         if (ctx->Else()) {
-            if (auto p_comp1 = ctx->comp_stmt(1)) {
-                curr_node.m_else = expr_cast(visit(p_comp1));
-            } else if (auto p_stmt1 = ctx->stmt(1)) {
-                curr_node.m_else = expr_cast(visit(p_stmt1));
-            } else {
-                // error
-                assert(false);
-                unreachable();
-            }
+            curr_node.m_else = expr_cast(visit(ctx->stmt(1)));
         }
 
         return ret;
@@ -198,17 +182,7 @@ public:
         curr_node.m_condi = expr_cast(visit(ctx->expr()));
 
         // loop body
-        any comp = visit(ctx->comp_stmt());
-        any stmt = visit(ctx->stmt());
-        if (comp.has_value() && !stmt.has_value()) {
-            curr_node.m_loop_body = expr_cast(comp);
-        } else if (!comp.has_value() && stmt.has_value()) {
-            curr_node.m_loop_body = expr_cast(stmt);
-        } else {
-            // error
-            assert(false);
-            unreachable();
-        }
+        curr_node.m_loop_body = expr_cast(visit(ctx->stmt()));
 
         return ret;
     }

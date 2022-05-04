@@ -124,9 +124,9 @@ continue_stmt: Continue Semi;
 
 expr_stmt: expr Semi | Semi;	
 
-selec_stmt: If LeftParen expr RightParen (comp_stmt | stmt) (Else (comp_stmt | stmt))?;
+selec_stmt: If LeftParen expr RightParen stmt  (Else stmt )?;
 
-iter_stmt: While LeftParen expr RightParen (comp_stmt | stmt);
+iter_stmt: While LeftParen expr RightParen stmt;
 
 return_stmt: Return (expr)? Semi;
 
