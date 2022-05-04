@@ -17,6 +17,7 @@ public:
     void codegen();
 
 private:
+    llvm::Value *visitAST(const Expr &expr);
     std::vector<std::shared_ptr<Expr>> m_trees;
 
     std::unique_ptr<llvm::LLVMContext> m_context;
