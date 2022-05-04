@@ -186,7 +186,7 @@ public:
         return ret;
     }
 
-    std::any visitIter_stmt(CParser::Iter_stmtContext *ctx) override {
+    std::any visitWhile_loop(CParser::While_loopContext *ctx) override {
         auto ret = make_shared<Expr>(WhileLoop{});
         auto &curr_node = ret->as<WhileLoop>();
 
@@ -194,6 +194,21 @@ public:
         curr_node.m_condi = expr_cast(visit(ctx->expr()));
 
         // loop body
+        curr_node.m_loop_body = expr_cast(visit(ctx->stmt()));
+
+        return ret;
+    }
+
+    virtual std::any visitFor_loop(CParser::For_loopContext *ctx) override {
+        auto ret = make_shared<Expr>(ForLoop{});
+        auto &curr_node = ret->as<ForLoop>();
+
+        if (ctx->for_init()) curr_node.m_init = expr_cast(visit(ctx->for_init()));
+
+        if (ctx->for_condi()) curr_node.m_condi = expr_cast(visit(ctx->for_condi()));
+
+        if (ctx->for_iter()) curr_node.m_iter = expr_cast(visit(ctx->for_iter()));
+
         curr_node.m_loop_body = expr_cast(visit(ctx->stmt()));
 
         return ret;
