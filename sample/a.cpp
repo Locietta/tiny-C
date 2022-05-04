@@ -19,5 +19,7 @@ int main(void) {
     } else
         x = 3;
 
+    char ch = 'c';
+
     return 0;
 }

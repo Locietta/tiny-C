@@ -10,10 +10,42 @@ inline auto expr_cast(std::any any) {
 }
 
 class my_visitor : public CParserBaseVisitor {
+    using TerminalNode = antlr4::tree::TerminalNode;
+    using ParseTreeType = antlr4::tree::ParseTreeType;
+
 public:
     std::vector<std::shared_ptr<Expr>> m_func_roots;  // FuncDef
     std::vector<std::shared_ptr<Expr>> m_global_vars; // InitExpr
     bool is_global = true;
+
+    std::any visitTerminal(TerminalNode *pTerminal) override {
+        assert(TerminalNode::is(pTerminal) && "It's not terminal, why?"); // sanity check
+        string const_text = pTerminal->getText();
+
+        if (const_text.front() == '\'') {
+            if (const_text[1] != '\\') { // non-escape
+                return ConstVar{const_text[1]};
+            } else { // escapes
+                char hint = const_text[2];
+                if (hint == 'n') {
+                    return ConstVar{'\n'};
+                } else if (hint == 't') {
+                    return ConstVar{'\t'};
+                } else if (hint == '\\') {
+                    return ConstVar{'\\'};
+                } else {
+                    assert(false && "Unsupported escape sequence!");
+                    unreachable();
+                }
+            }
+        } else if (const_text.find('.') == std::string::npos) {
+            return ConstVar{atoi(const_text.c_str())};
+        } else {
+            return ConstVar{atof(const_text.c_str())};
+        }
+
+        return defaultResult();
+    }
 
     std::any visitVar_decl(CParser::Var_declContext *ctx) override {
         // initial node
@@ -117,27 +149,7 @@ public:
         auto &curr_node = ret->as<Variable>(); // Variable curr_node;
 
         if (ctx->Assign()) {
-            auto p_init = make_shared<Expr>(ConstVar{});
-            auto &init = p_init->as<ConstVar>();
-
-            std::string const_text = ctx->Constant()->getText();
-            if (const_text[0] == '\'') {
-                if (const_text == R"('\n')")
-                    init = '\n';
-                else if (const_text == R"('\t')")
-                    init = '\t';
-                else if (const_text == R"('\\')")
-                    init = '\\';
-                else {
-                    // error
-                    assert(false);
-                    unreachable();
-                }
-            } else if (const_text.find('.') == std::string::npos) {
-                init = atoi(const_text.c_str());
-            } else {
-                init = atof(const_text.c_str());
-            }
+            auto init = any_cast<ConstVar>(visit(ctx->Constant()));
             curr_node.m_var_init = make_shared<Expr>(init);
         }
 
@@ -429,33 +441,8 @@ public:
     }
 
     std::any visitConst_factor(CParser::Const_factorContext *ctx) override {
-        auto ret = make_shared<Expr>(ConstVar{});
-        auto &curr_node = ret->as<ConstVar>();
-
-        string const_text = ctx->Constant()->getText();
-        if (const_text.front() == '\'') {
-            if (const_text[1] != '\\') { // non-escape
-                curr_node = const_text[1];
-            } else { // escapes
-                char hint = const_text[2];
-                if (hint == 'n') {
-                    curr_node = '\n';
-                } else if (hint == 't') {
-                    curr_node = '\t';
-                } else if (hint == '\\') {
-                    curr_node = '\\';
-                } else {
-                    assert(false && "Unsupported escape sequence!");
-                    unreachable();
-                }
-            }
-        } else if (const_text.find('.') == std::string::npos) {
-            curr_node = atoi(const_text.c_str());
-        } else {
-            curr_node = atof(const_text.c_str());
-        }
-
-        return ret;
+        auto const_var = any_cast<ConstVar>(visit(ctx->Constant()));
+        return make_shared<Expr>(const_var);
     }
 
     std::any visitCall(CParser::CallContext *ctx) override {
