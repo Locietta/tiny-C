@@ -63,7 +63,7 @@ int main(int argc, const char *argv[]) {
 
     IRGenerator builder{visitor.m_decls};
     // builder.codegen(); // TODO: IR generation
-    builder.printIR("output/a.llir");
+    builder.printIR("output/a.ll");
 
     // avoid `visitor` destruction before png generation is done
     png_gen_complete.wait(); //< waiting png-gen
