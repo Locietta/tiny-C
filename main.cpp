@@ -11,6 +11,8 @@
 using namespace antlrcpp;
 using namespace antlr4;
 
+namespace fs = std::filesystem;
+
 int main(int argc, const char *argv[]) {
     std::shared_ptr<std::ifstream> file_holder;
     std::istream *is = nullptr;
@@ -59,8 +61,9 @@ int main(int argc, const char *argv[]) {
         }
     });
 
-    // IRGenerator builder;
-    // TODO: IR generation
+    IRGenerator builder{visitor.m_decls};
+    // builder.codegen(); // TODO: IR generation
+    builder.printIR("output/a.llir");
 
     // avoid `visitor` destruction before png generation is done
     png_gen_complete.wait(); //< waiting png-gen

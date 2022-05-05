@@ -7,11 +7,6 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
       m_builder(std::make_unique<llvm::IRBuilder<>>(*m_context)),
       m_module(std::make_unique<llvm::Module>("tinycc JIT", *m_context)) {}
 
-IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> &&trees)
-    : m_trees(std::move(trees)), m_context(std::make_unique<llvm::LLVMContext>()),
-      m_builder(std::make_unique<llvm::IRBuilder<>>(*m_context)),
-      m_module(std::make_unique<llvm::Module>("tinycc JIT", *m_context)) {}
-
 llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     switch (type) {
     case Int: return llvm::Type::getInt32Ty(*m_context); break;
@@ -26,6 +21,22 @@ llvm::AllocaInst *IRGenerator::CreateEntryBlockAlloca(llvm::Function *TheFunctio
                                                       llvm::StringRef VarName, llvm::Type *type) {
     llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
     return TmpB.CreateAlloca(type, nullptr, VarName);
+}
+
+void IRGenerator::printIR(fs::path const &asm_path) const {
+    std::error_code ec;
+    raw_fd_ostream out(asm_path.native(), ec);
+    if (!ec) {
+        out << *m_module;
+        return;
+    }
+
+    // error when opening file
+    fmt::print(stderr,
+               "Error Category: {}, Code: {}, Message: {}",
+               ec.category().name(),
+               ec.value(),
+               ec.message());
 }
 
 void IRGenerator::codegen() {
@@ -77,8 +88,8 @@ Value *IRGenerator::visitAST(const Expr &expr) {
             }
 
             std::vector<Value *> ArgsV;
-            for (unsigned i = 0, e = func_call.m_para_list.size(); i != e; ++i) {
-                ArgsV.push_back(visitAST(*(func_call.m_para_list[i])));
+            for (const auto &para : func_call.m_para_list) {
+                ArgsV.push_back(visitAST(*para));
                 if (!ArgsV.back()) return nullptr;
             }
 
