@@ -432,9 +432,8 @@ public:
 
         curr_node.m_func_name = ctx->Identifier()->getText();
 
-        int n;
-        if ((n = ctx->args()->expr().size()) > 0) {
-            for (int i = 0; i < n; i++) {
+        if (size_t n = ctx->args()->expr().size(); n > 0) {
+            for (size_t i = 0; i < n; i++) {
                 curr_node.m_para_list.push_back(expr_cast(visit(ctx->args()->expr(i))));
             }
         }
