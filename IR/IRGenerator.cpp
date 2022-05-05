@@ -12,6 +12,16 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> &&trees)
       m_builder(std::make_unique<llvm::IRBuilder<>>(*m_context)),
       m_module(std::make_unique<llvm::Module>("tinycc JIT", *m_context)) {}
 
+llvm::Type *IRGenerator::getLLvmType(enum DataTypes type) {
+    switch (type) {
+    case Int: return llvm::Type::getInt32Ty(*m_context); break;
+    case Float: return llvm::Type::getFloatTy(*m_context); break;
+    case Char: return llvm::Type::getInt8Ty(*m_context); break;
+    default: break;
+    }
+    return llvm::Type::getVoidTy(*m_context);
+}
+
 void IRGenerator::codegen() {
     for (const auto &tree : m_trees) {
         visitAST(*tree);
@@ -40,17 +50,27 @@ Value *IRGenerator::visitAST(const Expr &expr) {
                 return ret;
             }
         },
-        [this](Variable const &var) -> Value * {
-            Value *ret = nullptr;
-            if (var.m_var_init->is<double>() && var.m_var_type == Char ||
-                var.m_var_init->is<char>() && var.m_var_type == Float) {
-                // type error
-                llvm_unreachable("Undeclared Var!");
-            } else {
-                Value *init_value = visitAST(*(var.m_var_init));
-                ret = m_symbolTable[var.m_var_name] = init_value;
+        [this](FuncCall const &func_call) -> Value * {
+            // Look up the name in the global module table.
+            Function *CalleeF = m_module->getFunction(func_call.m_func_name);
+            if (!CalleeF) {
+                llvm_unreachable("Unknown function referenced");
+                return nullptr;
             }
-            return ret;
+
+            // If argument mismatch error.
+            if (CalleeF->arg_size() != func_call.m_para_list.size()) {
+                llvm_unreachable("Incorrect # arguments passed");
+                return nullptr;
+            }
+
+            std::vector<Value *> ArgsV;
+            for (unsigned i = 0, e = func_call.m_para_list.size(); i != e; ++i) {
+                ArgsV.push_back(visitAST(*(func_call.m_para_list[i])));
+                if (!ArgsV.back()) return nullptr;
+            }
+
+            return m_builder->CreateCall(CalleeF, ArgsV, "calltmp");
         },
         [this](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }

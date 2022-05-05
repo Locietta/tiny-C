@@ -26,4 +26,6 @@ private:
 
     llvm::StringMap<llvm::Value *> m_symbolTable;
     std::map<std::string, enum DataTypes> m_varTypeTable;
+
+    llvm::Type *getLLvmType(enum DataTypes);
 };
