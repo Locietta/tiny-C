@@ -12,7 +12,7 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> &&trees)
       m_builder(std::make_unique<llvm::IRBuilder<>>(*m_context)),
       m_module(std::make_unique<llvm::Module>("tinycc JIT", *m_context)) {}
 
-llvm::Type *IRGenerator::getLLvmType(enum DataTypes type) {
+llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     switch (type) {
     case Int: return llvm::Type::getInt32Ty(*m_context); break;
     case Float: return llvm::Type::getFloatTy(*m_context); break;
@@ -48,13 +48,19 @@ Value *IRGenerator::visitAST(const Expr &expr) {
             llvm_unreachable("Unsupported ConstVar type!");
         },
         [this](NameRef const &var_name) -> Value * {
-            Value *ret = m_symbolTable[var_name];
-            if (!ret) {
+            Value *location = m_symbolTable[var_name];
+            if (!location) {
                 llvm_unreachable("Undeclared Var!");
                 return nullptr;
             } else {
-                return ret;
+                return m_builder->CreateLoad(getLLVMType(m_varTypeTable[var_name]),
+                                             location,
+                                             var_name.c_str());
             }
+        },
+        [this](Variable const &var) -> Value * {
+            return nullptr;
+            // to be done
         },
         [this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
