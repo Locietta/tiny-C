@@ -104,7 +104,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             for (const auto &p_para : func.m_para_list) {
                 sexp_fmt(*p_para);
             }
-            sexp_fmt(*func.m_func_body);
+            sexp_fmt(*func.m_body);
             print2buf(")");
         },
         [this](NameRef const &name) { print2buf(" name_ref:{}", name); },

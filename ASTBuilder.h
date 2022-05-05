@@ -92,19 +92,14 @@ public:
     std::any visitFunc_decl(CParser::Func_declContext *ctx) override {
         is_global = false;
 
-        auto ret = make_shared<Expr>(FuncDef{});
-        auto &curr_node = ret->as<FuncDef>();
-        curr_node.m_name = ctx->Identifier()->toString();
+        auto ret = make_shared<Expr>(FuncDef{
+            .m_name = ctx->Identifier()->toString(),
+            .m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params())),
+            .m_body = expr_cast(visit(ctx->comp_stmt())),
+            .m_return_type = any_cast<enum DataTypes>(visit(ctx->type_spec())),
+        });
 
-        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
-        curr_node.m_return_type = type;
-
-        auto body = any_cast<shared_ptr<Expr>>(visit(ctx->comp_stmt()));
-        curr_node.m_func_body = body;
-
-        curr_node.m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
         m_decls.push_back(ret);
-
         is_global = true;
         return ret;
     }
@@ -122,8 +117,7 @@ public:
     }
 
     std::any visitParam_list(CParser::Param_listContext *ctx) override {
-        std::vector<std::shared_ptr<Expr>> ret;
-
+        std::vector<std::shared_ptr<Expr>> ret(ctx->param().size());
         for (const auto &params = ctx->param(); const auto &param : params) {
             ret.push_back(any_cast<shared_ptr<Expr>>(visit(param)));
         }
@@ -132,28 +126,19 @@ public:
     }
 
     std::any visitParam(CParser::ParamContext *ctx) override {
-        auto ret = make_shared<Expr>(Variable{
+        return make_shared<Expr>(Variable{
+            .m_var_type = any_cast<enum DataTypes>(visit(ctx->type_spec())),
             .m_var_name = ctx->Identifier()->toString(),
         });
-        auto &curr_node = ret->as<Variable>();
-        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
-        curr_node.m_var_type = type;
-
-        return ret;
     }
 
     std::any visitNo_array_decl(CParser::No_array_declContext *ctx) override {
-        auto ret = make_shared<Expr>(Variable{
+        return make_shared<Expr>(Variable{
             .m_var_name = ctx->Identifier()->toString(),
+            .m_var_init = ctx->Assign()
+                              ? make_shared<Expr>(any_cast<ConstVar>(visit(ctx->Constant())))
+                              : nullptr,
         });
-        auto &curr_node = ret->as<Variable>(); // Variable curr_node;
-
-        if (ctx->Assign()) {
-            auto init = any_cast<ConstVar>(visit(ctx->Constant()));
-            curr_node.m_var_init = make_shared<Expr>(init);
-        }
-
-        return ret;
     }
 
     std::any visitComp_stmt(CParser::Comp_stmtContext *ctx) override {
@@ -169,37 +154,21 @@ public:
     }
 
     std::any visitSelec_stmt(CParser::Selec_stmtContext *ctx) override {
-        auto ret = make_shared<Expr>(IfElse{});
-        auto &curr_node = ret->as<IfElse>();
-
-        // condition
-        curr_node.m_condi = expr_cast(visit(ctx->expr()));
-
-        // if path
-        curr_node.m_if = expr_cast(visit(ctx->stmt(0)));
-
-        // else path
-        if (ctx->Else()) {
-            curr_node.m_else = expr_cast(visit(ctx->stmt(1)));
-        }
-
-        return ret;
+        return make_shared<Expr>(IfElse{
+            .m_condi = expr_cast(visit(ctx->expr())),                         // condition
+            .m_if = expr_cast(visit(ctx->stmt(0))),                           // if path
+            .m_else = ctx->Else() ? expr_cast(visit(ctx->stmt(1))) : nullptr, // else path
+        });
     }
 
     std::any visitWhile_loop(CParser::While_loopContext *ctx) override {
-        auto ret = make_shared<Expr>(WhileLoop{});
-        auto &curr_node = ret->as<WhileLoop>();
-
-        // while condition
-        curr_node.m_condi = expr_cast(visit(ctx->expr()));
-
-        // loop body
-        curr_node.m_loop_body = expr_cast(visit(ctx->stmt()));
-
-        return ret;
+        return make_shared<Expr>(WhileLoop{
+            .m_condi = expr_cast(visit(ctx->expr())),
+            .m_loop_body = expr_cast(visit(ctx->stmt())),
+        });
     }
 
-    virtual std::any visitFor_loop(CParser::For_loopContext *ctx) override {
+    std::any visitFor_loop(CParser::For_loopContext *ctx) override {
         auto ret = make_shared<Expr>(ForLoop{});
         auto &curr_node = ret->as<ForLoop>();
 
@@ -225,14 +194,11 @@ public:
     }
 
     std::any visitAssign_expr(CParser::Assign_exprContext *ctx) override {
-        auto ret = make_shared<Expr>(Binary{});
-        auto &curr_node = ret->as<Binary>();
-
-        curr_node.m_operand1 = expr_cast(visit(ctx->var()));
-        curr_node.m_operand2 = expr_cast(visit(ctx->expr()));
-        curr_node.m_operator = any_cast<enum Operators>(visit(ctx->assign()));
-
-        return ret;
+        return make_shared<Expr>(Binary{
+            .m_operand1 = expr_cast(visit(ctx->var())),
+            .m_operand2 = expr_cast(visit(ctx->expr())),
+            .m_operator = any_cast<enum Operators>(visit(ctx->assign())),
+        });
     }
 
     std::any visitUnary_expr(CParser::Unary_exprContext *ctx) override {

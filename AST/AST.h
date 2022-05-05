@@ -177,7 +177,7 @@ struct FuncCall {
 struct FuncDef {
     NameRef m_name;
     std::vector<std::shared_ptr<Expr>> m_para_list; // should put `Variable` here
-    std::shared_ptr<Expr> m_func_body;
+    std::shared_ptr<Expr> m_body;
     enum DataTypes m_return_type;
 };
 
