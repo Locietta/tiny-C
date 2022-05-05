@@ -4,9 +4,7 @@ char z = '\n';
 float y = 0.5;
 
 int main(void) {
-    for (int i = 0;; i = i + 1) {
-        x = x + 2;
-    }
+    int a = 1, b = 2, c = 3;
 
     return 0;
 }

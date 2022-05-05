@@ -40,5 +40,17 @@ Value *IRGenerator::visitAST(const Expr &expr) {
                 return ret;
             }
         },
+        [this](Variable const &var) -> Value * {
+            Value *ret = nullptr;
+            if (var.m_var_init->is<double>() && var.m_var_type == Char ||
+                var.m_var_init->is<char>() && var.m_var_type == Float) {
+                // type error
+                llvm_unreachable("Undeclared Var!");
+            } else {
+                Value *init_value = visitAST(*(var.m_var_init));
+                ret = m_symbolTable[var.m_var_name] = init_value;
+            }
+            return ret;
+        },
         [this](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }

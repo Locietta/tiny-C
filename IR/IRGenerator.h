@@ -25,4 +25,5 @@ private:
     std::unique_ptr<llvm::IRBuilder<>> m_builder;
 
     llvm::StringMap<llvm::Value *> m_symbolTable;
+    std::map<std::string, enum DataTypes> m_varTypeTable;
 };
