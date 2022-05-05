@@ -9,7 +9,7 @@ inline auto expr_cast(std::any any) {
     return any_cast<shared_ptr<Expr>>(any);
 }
 
-class my_visitor : public CParserBaseVisitor {
+class ASTBuilder : public CParserBaseVisitor {
     using TerminalNode = antlr4::tree::TerminalNode;
     using ParseTreeType = antlr4::tree::ParseTreeType;
 
