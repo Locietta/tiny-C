@@ -24,5 +24,5 @@ private:
     std::unique_ptr<llvm::Module> m_module;
     std::unique_ptr<llvm::IRBuilder<>> m_builder;
 
-    llvm::StringMap<llvm::Value *> symbolTable;
+    llvm::StringMap<llvm::Value *> m_symbolTable;
 };

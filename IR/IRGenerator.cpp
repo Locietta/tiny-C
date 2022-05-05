@@ -31,5 +31,14 @@ Value *IRGenerator::visitAST(const Expr &expr) {
             }
             llvm_unreachable("Unsupported ConstVar type!");
         },
+        [this](NameRef const &var_name) -> Value * {
+            Value *ret = m_symbolTable[var_name];
+            if (!ret) {
+                llvm_unreachable("Undeclared Var!");
+                return nullptr;
+            } else {
+                return ret;
+            }
+        },
         [this](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }
