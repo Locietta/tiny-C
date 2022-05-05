@@ -14,8 +14,8 @@ class my_visitor : public CParserBaseVisitor {
     using ParseTreeType = antlr4::tree::ParseTreeType;
 
 public:
-    std::vector<std::shared_ptr<Expr>> m_func_roots;  // FuncDef
-    std::vector<std::shared_ptr<Expr>> m_global_vars; // InitExpr
+    // Top level declarations, vector of `FuncDef` or `InitExpr`
+    std::vector<std::shared_ptr<Expr>> m_decls;
     bool is_global = true;
 
     std::any visitTerminal(TerminalNode *pTerminal) override {
@@ -62,7 +62,7 @@ public:
         }
 
         if (is_global) {
-            m_global_vars.push_back(move(ret));
+            m_decls.push_back(move(ret));
             return {};
         } else {
             return move(ret);
@@ -103,7 +103,7 @@ public:
         curr_node.m_func_body = body;
 
         curr_node.m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params()));
-        m_func_roots.push_back(ret);
+        m_decls.push_back(ret);
 
         is_global = true;
         return ret;

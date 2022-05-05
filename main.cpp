@@ -40,17 +40,18 @@ int main(int argc, const char *argv[]) {
     my_visitor visitor;
     std::any test = visitor.visit(tree);
 
-    for (int i = 0; const auto &func : visitor.m_func_roots) {
-        ASTPrinter print_func{func};
+    for (int i = 0; const auto &decl : visitor.m_decls) {
+        assert(decl->is<FuncDef>() || decl->is<InitExpr>());
+        ASTPrinter decl_printer{decl};
         std::string pic_path;
-        fmt::format_to(std::back_inserter(pic_path), "output/func{}", i++);
-        print_func.ToPNG(argv[0], move(pic_path));
-    }
-    for (int i = 0; const auto &var : visitor.m_global_vars) {
-        ASTPrinter print_var{var};
-        std::string pic_path;
-        fmt::format_to(std::back_inserter(pic_path), "output/var{}", i++);
-        print_var.ToPNG(argv[0], move(pic_path));
+        if (decl->is<FuncDef>()) {
+            fmt::format_to(std::back_inserter(pic_path),
+                           "output/func:{}",
+                           decl->as<FuncDef>().m_name);
+        } else {
+            fmt::format_to(std::back_inserter(pic_path), "output/global_decl{}", i++);
+        }
+        decl_printer.ToPNG(argv[0], move(pic_path));
     }
     return 0;
 }
