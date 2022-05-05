@@ -1,10 +1,12 @@
+#include <future>
 #include <iostream>
 #include <memory>
 
+#include "ASTBuilder.h"
 #include "CLexer.h"
 #include "CParser.h"
+#include "IRGenerator.h"
 #include "antlr4-runtime.h"
-#include "my_visitor.h"
 
 using namespace antlrcpp;
 using namespace antlr4;
@@ -37,21 +39,30 @@ int main(int argc, const char *argv[]) {
 
     // std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
 
-    my_visitor visitor;
-    std::any test = visitor.visit(tree);
+    ASTBuilder visitor;
+    visitor.visit(tree);
 
-    for (int i = 0; const auto &decl : visitor.m_decls) {
-        assert(decl->is<FuncDef>() || decl->is<InitExpr>());
-        ASTPrinter decl_printer{decl};
-        std::string pic_path;
-        if (decl->is<FuncDef>()) {
-            fmt::format_to(std::back_inserter(pic_path),
-                           "output/func:{}",
-                           decl->as<FuncDef>().m_name);
-        } else {
-            fmt::format_to(std::back_inserter(pic_path), "output/global_decl{}", i++);
+    // async: launch png generation in a separate thread
+    auto png_gen_complete = std::async(std::launch::async, [&visitor, &argv]() {
+        for (int i = 0; const auto &decl : visitor.m_decls) {
+            assert(decl->is<FuncDef>() || decl->is<InitExpr>());
+            ASTPrinter decl_printer{decl};
+            std::string pic_path;
+            if (decl->is<FuncDef>()) {
+                fmt::format_to(std::back_inserter(pic_path),
+                               "output/func:{}",
+                               decl->as<FuncDef>().m_name);
+            } else {
+                fmt::format_to(std::back_inserter(pic_path), "output/global_decl{}", i++);
+            }
+            decl_printer.ToPNG(argv[0], move(pic_path));
         }
-        decl_printer.ToPNG(argv[0], move(pic_path));
-    }
+    });
+
+    // IRGenerator builder;
+    // TODO: IR generation
+
+    // avoid `visitor` destruction before png generation is done
+    png_gen_complete.wait(); //< waiting png-gen
     return 0;
 }

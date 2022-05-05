@@ -34,4 +34,4 @@ target_link_libraries(
     PRIVATE AST
     PUBLIC ${llvm_libs}
 )
-target_precompile_headers(IR PRIVATE ${CMAKE_CURRENT_LIST_DIR}/pch.h)
+target_precompile_headers(IR PUBLIC ${CMAKE_CURRENT_LIST_DIR}/pch.h)
