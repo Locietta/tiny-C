@@ -28,4 +28,6 @@ private:
     std::map<std::string, enum DataTypes> m_varTypeTable;
 
     llvm::Type *getLLvmType(enum DataTypes);
+    llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::StringRef VarName,
+                                             llvm::Type *type);
 };
