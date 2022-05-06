@@ -70,8 +70,32 @@ Value *IRGenerator::visitAST(const Expr &expr) {
             }
         },
         [this](Variable const &var) -> Value * {
+            Value *init_value;
+
+            // initial value
+            if (var.m_var_init) {
+                // has init value
+                init_value = visitAST(*var.m_var_init);
+            } else {
+                // no init value, give it default value
+                init_value = ConstantFP::get(*m_context, APFloat(0.0));
+            }
+
+            // back up variables with the same name
+            if (m_curr_func) {
+                // local var
+                m_symbolBackUp[var.m_var_name] = m_symbolTable[var.m_var_name];
+            }
+
+            // allocate memory
+            AllocaInst *alloca =
+                CreateEntryBlockAlloca(m_curr_func, var.m_var_name, getLLVMType(var.m_var_type));
+            // initialize it
+            m_builder->CreateStore(init_value, alloca);
+            // register it in symbol table
+            m_symbolTable[var.m_var_name] = alloca;
+
             return nullptr;
-            // to be done
         },
         [this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
@@ -95,5 +119,35 @@ Value *IRGenerator::visitAST(const Expr &expr) {
 
             return m_builder->CreateCall(CalleeF, ArgsV, "calltmp");
         },
+        [this](IfElse const &if_node) -> Value * {
+            llvm::Value *condValue = visitAST(*if_node.m_condi), *thenValue = nullptr,
+                        *elseValue = nullptr;
+            condValue = m_builder->CreateICmpNE(
+                condValue,
+                llvm::ConstantInt::get(llvm::Type::getInt1Ty(*m_context), 0, true),
+                "ifCond");
+
+            llvm::Function *TheFunction = m_curr_func;
+            llvm::BasicBlock *thenBB = llvm::BasicBlock::Create(*m_context, "then", TheFunction);
+            llvm::BasicBlock *elseBB = llvm::BasicBlock::Create(*m_context, "else", TheFunction);
+            llvm::BasicBlock *mergeBB = llvm::BasicBlock::Create(*m_context, "merge", TheFunction);
+
+            // Then
+            auto branch = m_builder->CreateCondBr(condValue, thenBB, elseBB);
+            m_builder->SetInsertPoint(thenBB);
+            thenValue = visitAST(*if_node.m_if);
+            m_builder->CreateBr(mergeBB);
+            thenBB = m_builder->GetInsertBlock();
+
+            // else
+            m_builder->SetInsertPoint(elseBB);
+            elseValue = visitAST(*if_node.m_else);
+            m_builder->CreateBr(mergeBB);
+            elseBB = m_builder->GetInsertBlock();
+
+            m_builder->SetInsertPoint(mergeBB);
+            return branch;
+        },
+        [this](FuncDef const &) -> Value * { return nullptr; },
         [this](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }

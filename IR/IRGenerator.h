@@ -22,9 +22,10 @@ private:
     std::unique_ptr<llvm::IRBuilder<>> m_builder;
 
     llvm::StringMap<llvm::AllocaInst *> m_symbolTable;
+    llvm::StringMap<llvm::AllocaInst *> m_symbolBackUp;
     std::map<std::string, enum DataTypes> m_varTypeTable;
 
-    bool m_is_global = true;
+    llvm::Function *m_curr_func = nullptr;
 
     llvm::Type *getLLVMType(enum DataTypes);
     llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction, llvm::StringRef VarName,
