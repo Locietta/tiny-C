@@ -2,6 +2,68 @@
 
 using namespace llvm;
 
+// ------------ Implementation of `SymbolTable` -------------------
+
+void SymbolTable::push() {
+    locals.push_back(StringMap<Value *>{});
+}
+
+void SymbolTable::pop() {
+    // NOTE: globals should never be poped
+    if (!locals.empty()) locals.pop_back();
+    llvm_unreachable("Scope mismatch!");
+}
+
+// array-like write
+llvm::Value *&SymbolTable::operator[](llvm::StringRef var_name) {
+    // NOLINTNEXTLINE
+    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
+        auto &map = *it;
+        if (auto pair_it = map.find(var_name); pair_it != map.end()) {
+            return pair_it->getValue();
+        }
+    }
+    if (auto it = globals.find(var_name); it != globals.end()) {
+        return it->getValue();
+    }
+    return locals.back()[var_name];
+}
+
+// array-like read
+llvm::Value *const &SymbolTable::operator[](llvm::StringRef var_name) const {
+    // NOLINTNEXTLINE
+    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
+        const auto &map = *it;
+        if (auto pair_it = map.find(var_name); pair_it != map.end()) {
+            return pair_it->getValue();
+        }
+    }
+    if (auto it = globals.find(var_name); it != globals.end()) {
+        return it->getValue();
+    }
+
+    // invalid access
+    std::string err_msg;
+    fmt::format_to(std::back_inserter(err_msg), "Access to undefined variable `{}`!", var_name);
+    throw std::logic_error(err_msg);
+}
+
+bool SymbolTable::contains(llvm::StringRef var_name) const {
+    // NOLINTNEXTLINE
+    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
+        const auto &map = *it;
+        if (auto pair_it = map.find(var_name); pair_it != map.end()) {
+            return true;
+        }
+    }
+    if (auto it = globals.find(var_name); it != globals.end()) {
+        return true;
+    }
+    return false;
+}
+
+// ------------ Implementation of `IRGenerator` -------------------
+
 IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
     : m_trees(trees), m_context(std::make_unique<llvm::LLVMContext>()),
       m_builder(std::make_unique<llvm::IRBuilder<>>(*m_context)),
@@ -17,8 +79,8 @@ llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     return llvm::Type::getVoidTy(*m_context);
 }
 
-llvm::AllocaInst *IRGenerator::CreateEntryBlockAlloca(llvm::Function *TheFunction,
-                                                      llvm::StringRef VarName, llvm::Type *type) {
+static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction,
+                                                llvm::StringRef VarName, llvm::Type *type) {
     llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
     return TmpB.CreateAlloca(type, nullptr, VarName);
 }
@@ -41,11 +103,11 @@ void IRGenerator::printIR(fs::path const &asm_path) const {
 
 void IRGenerator::codegen() {
     for (const auto &tree : m_trees) {
-        visitAST(*tree);
+        visitASTNode(*tree);
     }
 }
 
-Value *IRGenerator::visitAST(const Expr &expr) {
+Value *IRGenerator::visitASTNode(const Expr &expr) {
     return match<Value *>(
         expr,
         [this](ConstVar const &var) -> Value * {
@@ -64,14 +126,21 @@ Value *IRGenerator::visitAST(const Expr &expr) {
                 llvm_unreachable("Undeclared Var!");
                 return nullptr;
             } else {
-                return m_builder->CreateLoad(getLLVMType(m_varTypeTable[var_name]),
-                                             location,
-                                             var_name.c_str());
+                return m_builder->CreateLoad(location->getType(), location, var_name.c_str());
             }
         },
+        // [this](InitExpr const &inits) -> Value * {
+        //     // std::vector<AllocaInst *>
+        // },
         [this](Variable const &var) -> Value * {
-            return nullptr;
-            // to be done
+            auto *A = cast<AllocaInst>(m_symbolTable[var.m_var_name]);
+            if (!A) {
+                fmt::print(stderr, "Unknown variable name");
+                return nullptr;
+            }
+
+            // Load the value.
+            return m_builder->CreateLoad(A->getAllocatedType(), A, var.m_var_name.c_str());
         },
         [this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
@@ -89,7 +158,7 @@ Value *IRGenerator::visitAST(const Expr &expr) {
 
             std::vector<Value *> ArgsV;
             for (const auto &para : func_call.m_para_list) {
-                ArgsV.push_back(visitAST(*para));
+                ArgsV.push_back(visitASTNode(*para));
                 if (!ArgsV.back()) return nullptr;
             }
 
