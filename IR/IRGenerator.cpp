@@ -4,29 +4,28 @@ using namespace llvm;
 
 // ------------ Implementation of `SymbolTable` -------------------
 
-void SymbolTable::push() {
+void SymbolTable::push_scope() {
     locals.push_back(StringMap<Value *>{});
 }
 
-void SymbolTable::pop() {
+void SymbolTable::pop_scope() {
     // NOTE: globals should never be poped
     if (!locals.empty()) locals.pop_back();
     llvm_unreachable("Scope mismatch!");
 }
 
-// array-like write
-llvm::Value *&SymbolTable::operator[](llvm::StringRef var_name) {
+void SymbolTable::insert(llvm::StringRef var_name, llvm::Value *val) {
     // NOLINTNEXTLINE
     for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
         auto &map = *it;
         if (auto pair_it = map.find(var_name); pair_it != map.end()) {
-            return pair_it->getValue();
+            pair_it->getValue() = val;
         }
     }
     if (auto it = globals.find(var_name); it != globals.end()) {
-        return it->getValue();
+        it->getValue() = val;
     }
-    return locals.back()[var_name];
+    locals.back().insert({var_name, val});
 }
 
 // array-like read
@@ -65,18 +64,19 @@ bool SymbolTable::contains(llvm::StringRef var_name) const {
 // ------------ Implementation of `IRGenerator` -------------------
 
 IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
-    : m_trees(trees), m_context(std::make_unique<llvm::LLVMContext>()),
-      m_builder(std::make_unique<llvm::IRBuilder<>>(*m_context)),
-      m_module(std::make_unique<llvm::Module>("tinycc JIT", *m_context)) {}
+    : m_trees(trees), m_context_ptr(std::make_unique<llvm::LLVMContext>()),
+      m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
+      m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
+      m_symbolTable_ptr(std::make_unique<SymbolTable>()) {}
 
 llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     switch (type) {
-    case Int: return llvm::Type::getInt32Ty(*m_context); break;
-    case Float: return llvm::Type::getFloatTy(*m_context); break;
-    case Char: return llvm::Type::getInt8Ty(*m_context); break;
+    case Int: return llvm::Type::getInt32Ty(*m_context_ptr); break;
+    case Float: return llvm::Type::getFloatTy(*m_context_ptr); break;
+    case Char: return llvm::Type::getInt8Ty(*m_context_ptr); break;
     default: break;
     }
-    return llvm::Type::getVoidTy(*m_context);
+    return llvm::Type::getVoidTy(*m_context_ptr);
 }
 
 static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction,
@@ -89,7 +89,7 @@ void IRGenerator::printIR(fs::path const &asm_path) const {
     std::error_code ec;
     raw_fd_ostream out(asm_path.native(), ec);
     if (!ec) {
-        out << *m_module;
+        out << *m_module_ptr;
         return;
     }
 
@@ -108,43 +108,48 @@ void IRGenerator::codegen() {
 }
 
 Value *IRGenerator::visitASTNode(const Expr &expr) {
+    auto &context = *m_context_ptr;
+    auto &module = *m_module_ptr;
+    auto &builder = *m_builder_ptr;
+    auto &symTable = *m_symbolTable_ptr;
+
     return match<Value *>(
         expr,
-        [this](ConstVar const &var) -> Value * {
+        [&, this](ConstVar const &var) -> Value * {
             if (var.is<double>()) {
-                return ConstantFP::get(*m_context, APFloat(var.as<double>()));
+                return ConstantFP::get(context, APFloat(var.as<double>()));
             } else if (var.is<int>()) {
-                return ConstantInt::get(*m_context, APInt(32, var.as<int>(), true));
+                return ConstantInt::get(context, APInt(32, var.as<int>(), true));
             } else if (var.is<char>()) {
-                return ConstantInt::get(*m_context, APInt(8, var.as<int>()));
+                return ConstantInt::get(context, APInt(8, var.as<int>()));
             }
             llvm_unreachable("Unsupported ConstVar type!");
         },
-        [this](NameRef const &var_name) -> Value * {
-            Value *location = m_symbolTable[var_name];
+        [&, this](NameRef const &var_name) -> Value * {
+            Value *location = symTable[var_name];
             if (!location) {
                 llvm_unreachable("Undeclared Var!");
                 return nullptr;
             } else {
-                return m_builder->CreateLoad(location->getType(), location, var_name.c_str());
+                return builder.CreateLoad(location->getType(), location, var_name.c_str());
             }
         },
         // [this](InitExpr const &inits) -> Value * {
         //     // std::vector<AllocaInst *>
         // },
-        [this](Variable const &var) -> Value * {
-            auto *A = cast<AllocaInst>(m_symbolTable[var.m_var_name]);
+        [&, this](Variable const &var) -> Value * {
+            auto *A = cast<AllocaInst>(symTable[var.m_var_name]);
             if (!A) {
                 fmt::print(stderr, "Unknown variable name");
                 return nullptr;
             }
 
             // Load the value.
-            return m_builder->CreateLoad(A->getAllocatedType(), A, var.m_var_name.c_str());
+            return builder.CreateLoad(A->getAllocatedType(), A, var.m_var_name.c_str());
         },
-        [this](FuncCall const &func_call) -> Value * {
+        [&, this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
-            Function *CalleeF = m_module->getFunction(func_call.m_func_name);
+            Function *CalleeF = module.getFunction(func_call.m_func_name);
             if (!CalleeF) {
                 llvm_unreachable("Unknown function referenced");
                 return nullptr;
@@ -162,7 +167,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 if (!ArgsV.back()) return nullptr;
             }
 
-            return m_builder->CreateCall(CalleeF, ArgsV, "calltmp");
+            return builder.CreateCall(CalleeF, ArgsV, "calltmp");
         },
-        [this](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
+        [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }

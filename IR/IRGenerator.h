@@ -6,17 +6,17 @@ namespace fs = std::filesystem;
 
 class SymbolTable {
 public:
-    void push();
-    void pop();
+    void push_scope();
+    void pop_scope();
 
     [[nodiscard]] bool contains(llvm::StringRef var_name) const;
+    void insert(llvm::StringRef var_name, llvm::Value *val);
 
-    llvm::Value *&operator[](llvm::StringRef var_name);
     llvm::Value *const &operator[](llvm::StringRef var_name) const;
 
 private:
-    llvm::StringMap<llvm::Value *> globals;                      // GlobalVariable *
-    llvm::SmallVector<llvm::StringMap<llvm::Value *>, 8> locals; // llvm::AllocaInst *
+    llvm::StringMap<llvm::Value *> globals;                   // GlobalVariable *
+    llvm::SmallVector<llvm::StringMap<llvm::Value *>> locals; // llvm::AllocaInst *
 };
 
 class IRGenerator {
@@ -29,13 +29,13 @@ public:
 
 private:
     llvm::Value *visitASTNode(const Expr &expr);
+    llvm::Type *getLLVMType(enum DataTypes);
+
     std::vector<std::shared_ptr<Expr>> const &m_trees; // reference to ASTBuilder
 
-    std::unique_ptr<llvm::LLVMContext> m_context;
-    std::unique_ptr<llvm::Module> m_module;
-    std::unique_ptr<llvm::IRBuilder<>> m_builder;
+    std::unique_ptr<llvm::LLVMContext> m_context_ptr;
+    std::unique_ptr<llvm::Module> m_module_ptr;
+    std::unique_ptr<llvm::IRBuilder<>> m_builder_ptr;
 
-    SymbolTable m_symbolTable;
-
-    llvm::Type *getLLVMType(enum DataTypes);
+    std::unique_ptr<SymbolTable> m_symbolTable_ptr;
 };
