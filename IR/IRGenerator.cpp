@@ -84,7 +84,8 @@ Value *IRGenerator::visitAST(const Expr &expr) {
             // back up variables with the same name
             if (m_curr_func) {
                 // local var
-                m_symbolBackUp[var.m_var_name] = m_symbolTable[var.m_var_name];
+                m_localVars.push_back(var.m_var_name);
+                m_addrBackUps.push_back(m_symbolTable[var.m_var_name]);
             }
 
             // allocate memory
@@ -148,6 +149,44 @@ Value *IRGenerator::visitAST(const Expr &expr) {
             m_builder->SetInsertPoint(mergeBB);
             return branch;
         },
-        [this](FuncDef const &) -> Value * { return nullptr; },
+        [this](FuncDef const &func_node) -> Value * {
+            // analyze param list
+            std::vector<llvm::Type *> params;
+            for (auto &param_node : func_node.m_para_list) {
+                auto param_type = param_node->as<Variable>().m_var_type;
+                params.push_back(getLLVMType(param_type));
+            }
+            // create func prototype
+            FunctionType *FT =
+                llvm::FunctionType::get(getLLVMType(func_node.m_return_type), params, false);
+            // create func
+            Function *func = llvm::Function::Create(FT,
+                                                    llvm::GlobalValue::ExternalLinkage,
+                                                    func_node.m_name,
+                                                    m_module.get());
+
+            // create Block
+            llvm::BasicBlock *newBlock =
+                llvm::BasicBlock::Create(*m_context, func_node.m_name + "_entry", func);
+            m_builder->SetInsertPoint(newBlock);
+
+            // set parameter name
+            int index = 0;
+            for (auto &Arg : func->args()) {
+                Arg.setName(func_node.m_para_list[index++]->as<Variable>().m_var_name);
+            }
+
+            // build function body recursively
+            visitAST(*func_node.m_body);
+
+            // clear local variables in this function
+            for (int i = 0; i < m_localVars.size(); i++) {
+                m_symbolTable[m_localVars[i]] = m_addrBackUps[i];
+            }
+            m_localVars.clear();
+            m_addrBackUps.clear();
+
+            return func;
+        },
         [this](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }

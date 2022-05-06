@@ -22,7 +22,9 @@ private:
     std::unique_ptr<llvm::IRBuilder<>> m_builder;
 
     llvm::StringMap<llvm::AllocaInst *> m_symbolTable;
-    llvm::StringMap<llvm::AllocaInst *> m_symbolBackUp;
+    std::vector<std::string> m_localVars;
+    std::vector<llvm::AllocaInst *> m_addrBackUps;
+
     std::map<std::string, enum DataTypes> m_varTypeTable;
 
     llvm::Function *m_curr_func = nullptr;
