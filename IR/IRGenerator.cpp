@@ -10,8 +10,7 @@ void SymbolTable::push_scope() {
 
 void SymbolTable::pop_scope() {
     // NOTE: globals should never be poped
-    if (!locals.empty()) locals.pop_back();
-    llvm_unreachable("Scope mismatch!");
+    locals.pop_back();
 }
 
 void SymbolTable::insert(llvm::StringRef var_name, llvm::Value *val) {
