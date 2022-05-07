@@ -5,7 +5,7 @@ using namespace llvm;
 // ------------ Implementation of `SymbolTable` -------------------
 
 void SymbolTable::push_scope() {
-    locals.push_back(StringMap<Value *>{});
+    locals.push_back(StringMap<AllocaInst *>{});
 }
 
 void SymbolTable::pop_scope() {
@@ -13,22 +13,13 @@ void SymbolTable::pop_scope() {
     locals.pop_back();
 }
 
-void SymbolTable::insert(llvm::StringRef var_name, llvm::Value *val) {
-    // NOLINTNEXTLINE
-    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
-        auto &map = *it;
-        if (auto pair_it = map.find(var_name); pair_it != map.end()) {
-            pair_it->getValue() = val;
-        }
-    }
-    if (auto it = globals.find(var_name); it != globals.end()) {
-        it->getValue() = val;
-    }
+void SymbolTable::insert(llvm::StringRef var_name, llvm::AllocaInst *val) {
+    assert(!locals.empty() && "No scope available for variable insertion!");
     locals.back().insert({var_name, val});
 }
 
 // array-like read
-llvm::Value *const &SymbolTable::operator[](llvm::StringRef var_name) const {
+llvm::AllocaInst *SymbolTable::operator[](llvm::StringRef var_name) const {
     // NOLINTNEXTLINE
     for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
         const auto &map = *it;
@@ -36,14 +27,7 @@ llvm::Value *const &SymbolTable::operator[](llvm::StringRef var_name) const {
             return pair_it->getValue();
         }
     }
-    if (auto it = globals.find(var_name); it != globals.end()) {
-        return it->getValue();
-    }
-
-    // invalid access
-    std::string err_msg;
-    fmt::format_to(std::back_inserter(err_msg), "Access to undefined variable `{}`!", var_name);
-    throw std::logic_error(err_msg);
+    return nullptr;
 }
 
 bool SymbolTable::contains(llvm::StringRef var_name) const {
@@ -53,9 +37,6 @@ bool SymbolTable::contains(llvm::StringRef var_name) const {
         if (auto pair_it = map.find(var_name); pair_it != map.end()) {
             return true;
         }
-    }
-    if (auto it = globals.find(var_name); it != globals.end()) {
-        return true;
     }
     return false;
 }
@@ -102,6 +83,7 @@ void IRGenerator::printIR(fs::path const &asm_path) const {
 
 void IRGenerator::codegen() {
     for (const auto &tree : m_trees) {
+
         visitASTNode(*tree);
     }
 }

@@ -10,13 +10,12 @@ public:
     void pop_scope();
 
     [[nodiscard]] bool contains(llvm::StringRef var_name) const;
-    void insert(llvm::StringRef var_name, llvm::Value *val);
+    void insert(llvm::StringRef var_name, llvm::AllocaInst *val);
 
-    llvm::Value *const &operator[](llvm::StringRef var_name) const;
+    llvm::AllocaInst *operator[](llvm::StringRef var_name) const;
 
 private:
-    llvm::StringMap<llvm::Value *> globals;                   // GlobalVariable *
-    llvm::SmallVector<llvm::StringMap<llvm::Value *>> locals; // llvm::AllocaInst *
+    llvm::SmallVector<llvm::StringMap<llvm::AllocaInst *>> locals; // llvm::AllocaInst *
 };
 
 class IRGenerator {
