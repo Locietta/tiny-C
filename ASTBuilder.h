@@ -117,7 +117,8 @@ public:
     }
 
     std::any visitParam_list(CParser::Param_listContext *ctx) override {
-        std::vector<std::shared_ptr<Expr>> ret(ctx->param().size());
+        std::vector<std::shared_ptr<Expr>> ret;
+        ret.reserve(ctx->param().size());
         for (const auto &params = ctx->param(); const auto &param : params) {
             ret.push_back(any_cast<shared_ptr<Expr>>(visit(param)));
         }
