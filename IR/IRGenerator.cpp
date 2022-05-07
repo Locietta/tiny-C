@@ -75,7 +75,7 @@ void IRGenerator::printIR(fs::path const &asm_path) const {
 
     // error when opening file
     fmt::print(stderr,
-               "Error Category: {}, Code: {}, Message: {}",
+               "Error Category: {}, Code: {}, Message: {}\n",
                ec.category().name(),
                ec.value(),
                ec.message());
@@ -83,8 +83,30 @@ void IRGenerator::printIR(fs::path const &asm_path) const {
 
 void IRGenerator::codegen() {
     for (const auto &tree : m_trees) {
-
-        visitASTNode(*tree);
+        if (tree->is<InitExpr>()) {
+            // global vars
+            for (const auto &p_node : tree->as<InitExpr>()) {
+                const auto &var = p_node->as<Variable>();
+                auto var_type = getLLVMType(var.m_var_type);
+                auto *globalVar = cast<GlobalVariable>(
+                    m_module_ptr->getOrInsertGlobal(var.m_var_name, var_type) //
+                );
+                if (var.m_var_init) {
+                    auto init = cast<Constant>(visitASTNode(*var.m_var_init));
+                    if (init->getType() != var_type) {
+                        std::string err_msg;
+                        fmt::format_to(std::back_inserter(err_msg),
+                                       "Unmatched initializer type for global var:{}\n",
+                                       var.m_var_name);
+                        throw std::logic_error(err_msg);
+                    }
+                    globalVar->setInitializer(init);
+                }
+            }
+        } else {
+            // a func
+            visitASTNode(*tree);
+        }
     }
 }
 
@@ -105,6 +127,49 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 return ConstantInt::get(context, APInt(8, var.as<int>()));
             }
             llvm_unreachable("Unsupported ConstVar type!");
+        },
+        [&, this](FuncDef const &func_node) -> Value * {
+            Function *p_func = module.getFunction(func_node.m_name);
+
+            if (!p_func) { // generate func proto if not exist
+                SmallVector<Type *> funcArgsTypes;
+                for (const auto &p_para : func_node.m_para_list) {
+                    const auto &para = p_para->as<Variable>();
+                    funcArgsTypes.push_back(getLLVMType(para.m_var_type));
+                }
+                Type *retType = getLLVMType(func_node.m_return_type);
+                FunctionType *func_type = FunctionType::get(retType, funcArgsTypes, false);
+                p_func = Function::Create(func_type,
+                                          Function::ExternalLinkage,
+                                          func_node.m_name,
+                                          module);
+
+                for (size_t i = 0; auto &arg : p_func->args()) {
+                    const auto &para = func_node.m_para_list[i++]->as<Variable>();
+                    arg.setName(para.m_var_name);
+                }
+            }
+
+            if (!p_func) { // somehow fail to generate func proto
+                std::string err_msg;
+                fmt::format_to(std::back_inserter(err_msg),
+                               "Failed to generate function prototype for `{}`\n",
+                               func_node.m_name);
+                throw std::logic_error(err_msg);
+            }
+
+            // Create new basic block
+            BasicBlock *BB = BasicBlock::Create(context, "func_entry", p_func);
+            builder.SetInsertPoint(BB);
+            symTable.push_scope();
+
+            for (auto &arg : p_func->args()) {
+                AllocaInst *alloc = CreateEntryBlockAlloca(p_func, arg.getName(), arg.getType());
+                builder.CreateStore(&arg, alloc);
+                symTable.insert(arg.getName(), alloc);
+            }
+
+            // TODO: func body
         },
         [&, this](NameRef const &var_name) -> Value * {
             Value *location = symTable[var_name];
