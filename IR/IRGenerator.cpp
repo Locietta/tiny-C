@@ -2,6 +2,12 @@
 
 using namespace llvm;
 
+struct scope_manager { // RAII scope manager
+    SymbolTable &sym;
+    scope_manager(SymbolTable &sym) : sym{sym} { sym.push_scope(); }
+    ~scope_manager() { sym.pop_scope(); }
+};
+
 // ------------ Implementation of `SymbolTable` -------------------
 
 void SymbolTable::push_scope() {
@@ -30,15 +36,10 @@ llvm::AllocaInst *SymbolTable::operator[](llvm::StringRef var_name) const {
     return nullptr;
 }
 
-bool SymbolTable::contains(llvm::StringRef var_name) const {
-    // NOLINTNEXTLINE
-    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
-        const auto &map = *it;
-        if (auto pair_it = map.find(var_name); pair_it != map.end()) {
-            return true;
-        }
-    }
-    return false;
+bool SymbolTable::inCurrScope(llvm::StringRef var_name) const {
+    if (locals.empty()) llvm_unreachable("try to query locals in null scope?");
+    const auto &curr_scope = locals.back();
+    return curr_scope.find(var_name) != curr_scope.end();
 }
 
 // ------------ Implementation of `IRGenerator` -------------------
@@ -161,7 +162,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // Create new basic block
             BasicBlock *BB = BasicBlock::Create(context, "func_entry", p_func);
             builder.SetInsertPoint(BB);
-            symTable.push_scope();
+            // FIXME: ↓ func args should be in the same scope as func body
+            scope_manager scope_mgr(symTable);
 
             for (auto &arg : p_func->args()) {
                 AllocaInst *alloc = CreateEntryBlockAlloca(p_func, arg.getName(), arg.getType());
@@ -169,29 +171,69 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 symTable.insert(arg.getName(), alloc);
             }
 
-            // TODO: func body
+            // codegen for func body
+            visitASTNode(*func_node.m_body);
+
+            // verification
+            verifyFunction(*p_func);
+
+            // TODO: mem2reg
+            return p_func;
+        },
+        [&, this](CompoundExpr const &comp) -> Value * {
+            scope_manager scope_mgr(symTable);
+            for (const auto &p_expr : comp) {
+                visitASTNode(*p_expr);
+            }
+            return nullptr;
         },
         [&, this](NameRef const &var_name) -> Value * {
-            Value *location = symTable[var_name];
-            if (!location) {
-                llvm_unreachable("Undeclared Var!");
-                return nullptr;
+            auto *var_ref = symTable[var_name];
+            if (!var_ref) {
+                std::string err_msg;
+                fmt::format_to(std::back_inserter(err_msg),
+                               "Try to use undeclared var:{}\n",
+                               var_name);
+                throw std::logic_error(err_msg);
             } else {
-                return builder.CreateLoad(location->getType(), location, var_name.c_str());
+                return builder.CreateLoad(var_ref->getAllocatedType(), var_ref, var_name.c_str());
             }
         },
-        // [this](InitExpr const &inits) -> Value * {
-        //     // std::vector<AllocaInst *>
-        // },
+        [this](InitExpr const &var_decls) -> Value * {
+            for (const auto &p_var_decl : var_decls) {
+                visitASTNode(*p_var_decl);
+            }
+            return nullptr;
+        },
         [&, this](Variable const &var) -> Value * {
-            auto *A = cast<AllocaInst>(symTable[var.m_var_name]);
-            if (!A) {
-                fmt::print(stderr, "Unknown variable name");
-                return nullptr;
+            if (symTable.inCurrScope(var.m_var_name)) {
+                std::string err_msg;
+                fmt::format_to(std::back_inserter(err_msg),
+                               "Duplicate declaration of `{}`\n",
+                               var.m_var_name);
+                throw std::logic_error(err_msg);
             }
 
-            // Load the value.
-            return builder.CreateLoad(A->getAllocatedType(), A, var.m_var_name.c_str());
+            Type *var_type = getLLVMType(var.m_var_type);
+            AllocaInst *p_new_var = builder.CreateAlloca(var_type, nullptr, var.m_var_name);
+            if (!p_new_var) [[unlikely]] {
+                std::string err_msg;
+                fmt::format_to(std::back_inserter(err_msg),
+                               "Interal compiler error: failed to allocate {}\n",
+                               var.m_var_name);
+                throw std::runtime_error(err_msg);
+            }
+
+            // add it to symbol table
+            symTable.insert(var.m_var_name, p_new_var);
+
+            // init var if needed
+            if (var.m_var_init) {
+                Value *init_val = visitASTNode(*var.m_var_init);
+                builder.CreateStore(init_val, p_new_var);
+            }
+
+            return p_new_var;
         },
         [&, this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.

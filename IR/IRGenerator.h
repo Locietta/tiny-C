@@ -9,7 +9,7 @@ public:
     void push_scope();
     void pop_scope();
 
-    [[nodiscard]] bool contains(llvm::StringRef var_name) const;
+    [[nodiscard]] bool inCurrScope(llvm::StringRef var_name) const;
     void insert(llvm::StringRef var_name, llvm::AllocaInst *val);
 
     llvm::AllocaInst *operator[](llvm::StringRef var_name) const;
