@@ -17,14 +17,5 @@
 
 template <typename ExcepT = std::logic_error, typename... T>
 [[noreturn]] inline void throw_err(fmt::format_string<T...> fmt, T &&...args) {
-    std::string err_msg;
-    fmt::format_to(std::back_inserter(err_msg), fmt, std::forward<T>(args)...);
-    throw ExcepT(err_msg);
-}
-
-template <typename... T>
-inline std::string format(fmt::format_string<T...> fmt, T &&...args) {
-    std::string ret;
-    fmt::format_to(std::back_inserter(ret), fmt, std::forward<T>(args)...);
-    return std::move(ret);
+    throw ExcepT(fmt::format(fmt, std::forward<T>(args)...));
 }

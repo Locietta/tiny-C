@@ -45,7 +45,7 @@ int main(int argc, const char *argv[]) {
     visitor.visit(tree);
 
     std::string output_dir{"output"};
-    system(format("mkdir -p {} && rm -rf {}/*", output_dir, output_dir).c_str());
+    system(fmt::format("mkdir -p {} && rm -rf {}/*", output_dir, output_dir).c_str());
 
     // async: launch png generation in a separate thread
     auto png_gen_complete = std::async(std::launch::async, [&visitor, &output_dir, argv]() {
@@ -54,9 +54,9 @@ int main(int argc, const char *argv[]) {
             ASTPrinter decl_printer{decl};
             fs::path pic_path{output_dir};
             if (decl->is<FuncDef>()) {
-                pic_path.append(format("func:{}", decl->as<FuncDef>().m_name));
+                pic_path.append(fmt::format("func:{}", decl->as<FuncDef>().m_name));
             } else {
-                pic_path.append(format("global_decl{}", i++));
+                pic_path.append(fmt::format("global_decl{}", i++));
             }
             decl_printer.ToPNG(argv[0], pic_path);
         }

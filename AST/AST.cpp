@@ -130,10 +130,10 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
 
 void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {
     sexp_fmt(*AST);
-    std::string out = format("echo \"{}\n{}\" | python {}/sexp_to_png.py",
-                             fmt::to_string(buffer),
-                             filename.c_str(),
-                             exe_path.parent_path().c_str());
+    std::string out = fmt::format("echo \"{}\n{}\" | python {}/sexp_to_png.py",
+                                  fmt::to_string(buffer),
+                                  filename.c_str(),
+                                  exe_path.parent_path().c_str());
     fmt::print("{}", fmt::to_string(buffer));
     system(out.c_str());
 }
