@@ -1,4 +1,5 @@
 #include "AST.h"
+#include "utility.hpp"
 #include <algorithm>
 #include <cstring>
 #include <fmt/core.h>
@@ -129,17 +130,10 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
 
 void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {
     sexp_fmt(*AST);
-    std::string out;
-    if (filename.has_parent_path()) {
-        fmt::format_to(back_inserter(out), "mkdir -p {}", filename.parent_path().c_str());
-        system(out.c_str());
-        out.clear();
-    }
-    fmt::format_to(back_inserter(out),
-                   "echo \"{}\n{}\" | python {}/sexp_to_png.py",
-                   fmt::to_string(buffer),
-                   filename.c_str(),
-                   exe_path.parent_path().c_str());
+    std::string out = format("echo \"{}\n{}\" | python {}/sexp_to_png.py",
+                             fmt::to_string(buffer),
+                             filename.c_str(),
+                             exe_path.parent_path().c_str());
     fmt::print("{}", fmt::to_string(buffer));
     system(out.c_str());
 }

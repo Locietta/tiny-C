@@ -44,25 +44,26 @@ int main(int argc, const char *argv[]) {
     ASTBuilder visitor;
     visitor.visit(tree);
 
+    std::string output_dir{"output"};
+    system(format("mkdir -p {} && rm -rf {}/*", output_dir, output_dir).c_str());
+
     // async: launch png generation in a separate thread
-    auto png_gen_complete = std::async(std::launch::async, [&visitor, &argv]() {
+    auto png_gen_complete = std::async(std::launch::async, [&visitor, &output_dir, argv]() {
         for (int i = 0; const auto &decl : visitor.m_decls) {
             assert(decl->is<FuncDef>() || decl->is<InitExpr>());
             ASTPrinter decl_printer{decl};
-            std::string pic_path;
+            fs::path pic_path{output_dir};
             if (decl->is<FuncDef>()) {
-                fmt::format_to(std::back_inserter(pic_path),
-                               "output/func:{}",
-                               decl->as<FuncDef>().m_name);
+                pic_path.append(format("func:{}", decl->as<FuncDef>().m_name));
             } else {
-                fmt::format_to(std::back_inserter(pic_path), "output/global_decl{}", i++);
+                pic_path.append(format("global_decl{}", i++));
             }
-            decl_printer.ToPNG(argv[0], move(pic_path));
+            decl_printer.ToPNG(argv[0], pic_path);
         }
     });
 
     IRGenerator builder{visitor.m_decls};
-    // builder.codegen(); // TODO: IR generation
+    builder.codegen(); // TODO: IR generation
     builder.printIR("output/a.ll");
 
     // avoid `visitor` destruction before png generation is done
