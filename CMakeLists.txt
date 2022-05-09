@@ -33,6 +33,9 @@ message(STATUS "Antlr4 Runtime Dir: ${ANTLR4_INCLUDE_DIR}")
 # LLVM includes
 include_directories(${LLVM_INCLUDE_DIRS})
 
+# Top Level Public Headers
+include_directories(${CMAKE_CURRENT_LIST_DIR}/utility)
+
 # sub-directories
 add_subdirectory(AST)
 add_subdirectory(IR)
