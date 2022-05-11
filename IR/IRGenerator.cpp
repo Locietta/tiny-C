@@ -1,4 +1,5 @@
 #include "IRGenerator.h"
+#include "utility.hpp"
 
 using namespace llvm;
 
@@ -60,12 +61,6 @@ llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     return llvm::Type::getVoidTy(*m_context_ptr);
 }
 
-static llvm::AllocaInst *CreateEntryBlockAlloca(llvm::Function *TheFunction,
-                                                llvm::StringRef VarName, llvm::Type *type) {
-    llvm::IRBuilder<> TmpB(&TheFunction->getEntryBlock(), TheFunction->getEntryBlock().begin());
-    return TmpB.CreateAlloca(type, nullptr, VarName);
-}
-
 void IRGenerator::printIR(fs::path const &asm_path) const {
     std::error_code ec;
     raw_fd_ostream out(asm_path.native(), ec);
@@ -95,11 +90,7 @@ void IRGenerator::codegen() {
                 if (var.m_var_init) {
                     auto init = cast<Constant>(visitASTNode(*var.m_var_init));
                     if (init->getType() != var_type) {
-                        std::string err_msg;
-                        fmt::format_to(std::back_inserter(err_msg),
-                                       "Unmatched initializer type for global var:{}\n",
-                                       var.m_var_name);
-                        throw std::logic_error(err_msg);
+                        throw_err("Unmatched initializer type for global var:{}\n", var.m_var_name);
                     }
                     globalVar->setInitializer(init);
                 }
@@ -109,6 +100,14 @@ void IRGenerator::codegen() {
             visitASTNode(*tree);
         }
     }
+}
+
+static bool isFloat(Value *val) {
+    Type *valT = val->getType();
+    auto &context = valT->getContext();
+    Type *floatT = llvm::Type::getFloatTy(context);
+    Type *doubleT = llvm::Type::getDoubleTy(context);
+    return valT == floatT || valT == doubleT;
 }
 
 Value *IRGenerator::visitASTNode(const Expr &expr) {
@@ -136,7 +135,9 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 SmallVector<Type *> funcArgsTypes;
                 for (const auto &p_para : func_node.m_para_list) {
                     const auto &para = p_para->as<Variable>();
-                    funcArgsTypes.push_back(getLLVMType(para.m_var_type));
+                    if (para.m_var_type != Void) { // skip Void param
+                        funcArgsTypes.push_back(getLLVMType(para.m_var_type));
+                    }
                 }
                 Type *retType = getLLVMType(func_node.m_return_type);
                 FunctionType *func_type = FunctionType::get(retType, funcArgsTypes, false);
@@ -144,31 +145,25 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                                           Function::ExternalLinkage,
                                           func_node.m_name,
                                           module);
-
-                for (size_t i = 0; auto &arg : p_func->args()) {
-                    const auto &para = func_node.m_para_list[i++]->as<Variable>();
-                    arg.setName(para.m_var_name);
-                }
             }
 
             if (!p_func) { // somehow fail to generate func proto
-                std::string err_msg;
-                fmt::format_to(std::back_inserter(err_msg),
-                               "Failed to generate function prototype for `{}`\n",
-                               func_node.m_name);
-                throw std::logic_error(err_msg);
+                throw_err("Failed to generate function prototype for `{}`\n", func_node.m_name);
             }
 
             // Create new basic block
-            BasicBlock *BB = BasicBlock::Create(context, "func_entry", p_func);
-            builder.SetInsertPoint(BB);
+            BasicBlock *entryBlock = BasicBlock::Create(context, "func_entry", p_func);
+            builder.SetInsertPoint(entryBlock);
             // FIXME: ↓ func args should be in the same scope as func body
             scope_manager scope_mgr(symTable);
 
             for (auto &arg : p_func->args()) {
-                AllocaInst *alloc = CreateEntryBlockAlloca(p_func, arg.getName(), arg.getType());
-                builder.CreateStore(&arg, alloc);
-                symTable.insert(arg.getName(), alloc);
+                // AllocaInst *alloc = CreateEntryBlockAlloca(p_func, arg.getName(), arg.getType());
+                size_t argNo = arg.getArgNo();
+                Type *argType = p_func->getFunctionType()->getParamType(argNo);
+                StringRef argName = func_node.m_para_list[argNo]->as<Variable>().m_var_name;
+                AllocaInst *alloc = builder.CreateAlloca(argType, nullptr, argName);
+                symTable.insert(argName, alloc);
             }
 
             // codegen for func body
@@ -187,14 +182,17 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             }
             return nullptr;
         },
+        // NameRef returns `LoadInst *`
         [&, this](NameRef const &var_name) -> Value * {
             auto *var_ref = symTable[var_name];
             if (!var_ref) {
-                std::string err_msg;
-                fmt::format_to(std::back_inserter(err_msg),
-                               "Try to use undeclared var:{}\n",
-                               var_name);
-                throw std::logic_error(err_msg);
+                // check if it's global
+                if (auto *global = module.getNamedGlobal(var_name)) {
+                    // NOTE: global->getType() is a pointer type
+                    return builder.CreateLoad(global->getValueType(), global);
+                }
+                // report error: ref to var that doesn't exist
+                throw_err("Try to use undeclared var:{}\n", var_name);
             } else {
                 return builder.CreateLoad(var_ref->getAllocatedType(), var_ref, var_name.c_str());
             }
@@ -207,21 +205,14 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
         },
         [&, this](Variable const &var) -> Value * {
             if (symTable.inCurrScope(var.m_var_name)) {
-                std::string err_msg;
-                fmt::format_to(std::back_inserter(err_msg),
-                               "Duplicate declaration of `{}`\n",
-                               var.m_var_name);
-                throw std::logic_error(err_msg);
+                throw_err("Duplicate declaration of `{}`\n", var.m_var_name);
             }
 
             Type *var_type = getLLVMType(var.m_var_type);
             AllocaInst *p_new_var = builder.CreateAlloca(var_type, nullptr, var.m_var_name);
             if (!p_new_var) [[unlikely]] {
-                std::string err_msg;
-                fmt::format_to(std::back_inserter(err_msg),
-                               "Interal compiler error: failed to allocate {}\n",
-                               var.m_var_name);
-                throw std::runtime_error(err_msg);
+                throw_err<std::runtime_error>("Interal compiler error: failed to allocate {}\n",
+                                              var.m_var_name);
             }
 
             // add it to symbol table
@@ -234,6 +225,19 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             }
 
             return p_new_var;
+        },
+        [&, this](Return const &ret) -> Value * {
+            if (Function *parent_func = builder.GetInsertBlock()->getParent()) {
+                if (ret.m_expr) {
+                    builder.CreateRet(visitASTNode(*ret.m_expr));
+                } else {
+                    builder.CreateRetVoid();
+                }
+                return nullptr;
+            } else {
+                throw_err("Return statement outside func?");
+            }
+            llvm_unreachable("");
         },
         [&, this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
@@ -256,6 +260,26 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             }
 
             return builder.CreateCall(CalleeF, ArgsV, "calltmp");
+        },
+        [&, this](Binary const &exp) -> Value * {
+            Value *lhs = visitASTNode(*exp.m_operand1);
+            Value *rhs = visitASTNode(*exp.m_operand2);
+            switch (exp.m_operator) {
+            case Plus: return builder.CreateAdd(lhs, rhs, "add");
+            case Minus: return builder.CreateSub(lhs, rhs, "sub");
+            case Mul: return builder.CreateMul(lhs, rhs, "mul");
+            case Div: {
+                // if there is a float, convert them to floats
+                if (auto is_f_l = isFloat(lhs), is_f_r = isFloat(rhs); is_f_l || is_f_r) {
+                    if (is_f_l) builder.CreateSIToFP(lhs, getLLVMType(Float));
+                    if (is_f_r) builder.CreateSIToFP(rhs, getLLVMType(Float));
+                    return builder.CreateFDiv(lhs, rhs, "fdiv");
+                } else { // neither is float, so they're ints
+                    return builder.CreateSDiv(lhs, rhs, "sidiv");
+                }
+            }
+            default: llvm_unreachable("Unimplemented op?");
+            }
         },
         [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }

@@ -2,8 +2,8 @@
 
 #include <algorithm>
 #include <array>
-#include <exception>
 #include <initializer_list>
+#include <stdexcept>
 
 template <typename Key, typename Value, std::size_t Size>
 struct ConstexprMap {

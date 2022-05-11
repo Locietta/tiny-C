@@ -53,14 +53,14 @@ enum DataTypes {
     // etc
 };
 
-constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_map{{
+constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_map{
     {Plus, "+"},       {PlusPlus, "++"},   {Minus, "-"},         {MinusMinus, "--"},
     {Mul, "*"},        {Div, "/"},         {Mod, "%"},           {Equal, "=="},
     {Greater, ">"},    {Less, "<"},        {GreaterEqual, ">="}, {LessEqual, "<="},
     {NotEqual, "!="},  {PlusAssign, "+="}, {MinusAssign, "-="},  {MulAssign, "*="},
     {DivAssign, "/="}, {ModAssign, "%="},  {Assign, "="},        {OrOr, "||"},
     {AndAnd, "&&"},    {Not, "!"},
-}};
+};
 
 constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_map{
     {Void, "void"},
