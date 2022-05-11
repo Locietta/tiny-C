@@ -189,7 +189,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 // check if it's global
                 if (auto *global = module.getNamedGlobal(var_name)) {
                     // NOTE: global->getType() is a pointer type
-                    return builder.CreateLoad(global->getValueType(), global);
+                    return builder.CreateLoad(global->getValueType(), global, var_name.c_str());
                 }
                 // report error: ref to var that doesn't exist
                 throw_err("Try to use undeclared var:{}\n", var_name);
@@ -226,14 +226,18 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             return p_new_var;
         },
-        [&, this](Return const &ret) -> Value * {
+        [&, this](Return const &retExpr) -> Value * {
             Function *parent_func = builder.GetInsertBlock()->getParent();
             // if (!parent_func) throw_err("Return statement outside func?");
-            if (ret.m_expr) {
-                return builder.CreateRet(visitASTNode(*ret.m_expr));
+            ReturnInst *ret;
+            if (retExpr.m_expr) {
+                ret = builder.CreateRet(visitASTNode(*retExpr.m_expr));
             } else {
-                return builder.CreateRetVoid();
+                ret = builder.CreateRetVoid();
             }
+            // mark dead code after `return`
+            builder.CreateUnreachable();
+            return ret;
         },
         [&, this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
@@ -280,9 +284,9 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             }
             case Equal: {
                 if (is_f) {
-                    return builder.CreateCmp(CmpInst::FCMP_OEQ, lhs, rhs);
+                    return builder.CreateCmp(CmpInst::FCMP_OEQ, lhs, rhs, "feq");
                 } else {
-                    return builder.CreateCmp(CmpInst::ICMP_EQ, lhs, rhs);
+                    return builder.CreateCmp(CmpInst::ICMP_EQ, lhs, rhs, "ieq");
                 }
             }
             default: llvm_unreachable("Unimplemented op?");
@@ -306,16 +310,29 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // recursive if-else can change blocks where we're emitting code
             thenBB = builder.GetInsertBlock();
+            // jump out if-else block, but not neccessary if there's return in BB
             builder.CreateBr(mergeBB);
-
             // else branch
-            if (exp.m_else) {
-                parent_func->getBasicBlockList().push_back(elseBB);
-                builder.SetInsertPoint(elseBB);
-                visitASTNode(*exp.m_else);
-            }
+            parent_func->getBasicBlockList().push_back(elseBB);
+            builder.SetInsertPoint(elseBB);
+            if (exp.m_else) visitASTNode(*exp.m_else);
+
+            builder.CreateBr(mergeBB);
+            elseBB = builder.GetInsertBlock();
+
+            // merge block
+            parent_func->getBasicBlockList().push_back(mergeBB);
+            builder.SetInsertPoint(mergeBB);
 
             return ret;
+        },
+        [&, this](WhileLoop const &while_loop) -> Value * {
+            Value *cond_val = visitASTNode(*while_loop.m_condi);
+            if (!cond_val) throw_err("Null condition expr for if-else statement!");
+            Function *parent_func = builder.GetInsertBlock()->getParent();
+
+            // create while loop blocks
+            auto *loopBB = BasicBlock::Create(context, "loop");
         },
         [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }
