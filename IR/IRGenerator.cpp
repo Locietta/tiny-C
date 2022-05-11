@@ -119,7 +119,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
     return match<Value *>(
         expr,
         [&, this](ConstVar const &var) -> Value * {
-            if (var.is<double>()) {
+            if (var.is<double>()) { // FIXME: double or float?
                 return ConstantFP::get(context, APFloat(var.as<double>()));
             } else if (var.is<int>()) {
                 return ConstantInt::get(context, APInt(32, var.as<int>(), true));
@@ -227,17 +227,13 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             return p_new_var;
         },
         [&, this](Return const &ret) -> Value * {
-            if (Function *parent_func = builder.GetInsertBlock()->getParent()) {
-                if (ret.m_expr) {
-                    builder.CreateRet(visitASTNode(*ret.m_expr));
-                } else {
-                    builder.CreateRetVoid();
-                }
-                return nullptr;
+            Function *parent_func = builder.GetInsertBlock()->getParent();
+            // if (!parent_func) throw_err("Return statement outside func?");
+            if (ret.m_expr) {
+                return builder.CreateRet(visitASTNode(*ret.m_expr));
             } else {
-                throw_err("Return statement outside func?");
+                return builder.CreateRetVoid();
             }
-            llvm_unreachable("");
         },
         [&, this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
@@ -264,22 +260,62 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
         [&, this](Binary const &exp) -> Value * {
             Value *lhs = visitASTNode(*exp.m_operand1);
             Value *rhs = visitASTNode(*exp.m_operand2);
+
+            // if either is float, convert them to floats
+            bool is_f_left = isFloat(lhs), is_f_right = isFloat(rhs);
+            if (is_f_left) builder.CreateSIToFP(lhs, getLLVMType(Float));
+            if (is_f_right) builder.CreateSIToFP(rhs, getLLVMType(Float));
+            bool is_f = is_f_left || is_f_right;
+
             switch (exp.m_operator) {
             case Plus: return builder.CreateAdd(lhs, rhs, "add");
             case Minus: return builder.CreateSub(lhs, rhs, "sub");
             case Mul: return builder.CreateMul(lhs, rhs, "mul");
             case Div: {
-                // if there is a float, convert them to floats
-                if (auto is_f_l = isFloat(lhs), is_f_r = isFloat(rhs); is_f_l || is_f_r) {
-                    if (is_f_l) builder.CreateSIToFP(lhs, getLLVMType(Float));
-                    if (is_f_r) builder.CreateSIToFP(rhs, getLLVMType(Float));
+                if (is_f) {
                     return builder.CreateFDiv(lhs, rhs, "fdiv");
-                } else { // neither is float, so they're ints
+                } else { // neither is float, so they're (signed) ints
                     return builder.CreateSDiv(lhs, rhs, "sidiv");
+                }
+            }
+            case Equal: {
+                if (is_f) {
+                    return builder.CreateCmp(CmpInst::FCMP_OEQ, lhs, rhs);
+                } else {
+                    return builder.CreateCmp(CmpInst::ICMP_EQ, lhs, rhs);
                 }
             }
             default: llvm_unreachable("Unimplemented op?");
             }
+        },
+        [&, this](IfElse const &exp) -> Value * {
+            Value *cond_val = visitASTNode(*exp.m_condi);
+            if (!cond_val) throw_err("Null condition expr for if-else statement!");
+            Function *parent_func = builder.GetInsertBlock()->getParent();
+
+            // create new basic block for branches
+            auto *thenBB = BasicBlock::Create(context, "then", parent_func);
+            auto *mergeBB = BasicBlock::Create(context, "if_cond");
+            auto *elseBB = BasicBlock::Create(context, "else");
+
+            auto *ret = builder.CreateCondBr(cond_val, thenBB, elseBB);
+
+            // then branch
+            builder.SetInsertPoint(thenBB);
+            visitASTNode(*exp.m_if);
+
+            // recursive if-else can change blocks where we're emitting code
+            thenBB = builder.GetInsertBlock();
+            builder.CreateBr(mergeBB);
+
+            // else branch
+            if (exp.m_else) {
+                parent_func->getBasicBlockList().push_back(elseBB);
+                builder.SetInsertPoint(elseBB);
+                visitASTNode(*exp.m_else);
+            }
+
+            return ret;
         },
         [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }
