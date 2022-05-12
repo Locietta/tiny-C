@@ -293,16 +293,28 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             }
         },
         [&, this](IfElse const &exp) -> Value * {
+            /**
+             *      br <cond>, then, else
+             * then:
+             *      <True Branch>
+             *      br if_end
+             * else:
+             *      <False Branch>
+             *      br if_end
+             * if_end:
+             *      ...
+             */
+
             Value *cond_val = visitASTNode(*exp.m_condi);
             if (!cond_val) throw_err("Null condition expr for if-else statement!");
             Function *parent_func = builder.GetInsertBlock()->getParent();
 
             // create new basic block for branches
             auto *thenBB = BasicBlock::Create(context, "then", parent_func);
-            auto *mergeBB = BasicBlock::Create(context, "if_cond");
             auto *elseBB = BasicBlock::Create(context, "else");
+            auto *mergeBB = BasicBlock::Create(context, "if_end");
 
-            auto *ret = builder.CreateCondBr(cond_val, thenBB, elseBB);
+            builder.CreateCondBr(cond_val, thenBB, elseBB);
 
             // then branch
             builder.SetInsertPoint(thenBB);
@@ -310,29 +322,58 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // recursive if-else can change blocks where we're emitting code
             thenBB = builder.GetInsertBlock();
-            // jump out if-else block, but not neccessary if there's return in BB
             builder.CreateBr(mergeBB);
+
             // else branch
             parent_func->getBasicBlockList().push_back(elseBB);
             builder.SetInsertPoint(elseBB);
             if (exp.m_else) visitASTNode(*exp.m_else);
-
             builder.CreateBr(mergeBB);
             elseBB = builder.GetInsertBlock();
 
-            // merge block
+            // exit if
             parent_func->getBasicBlockList().push_back(mergeBB);
             builder.SetInsertPoint(mergeBB);
 
-            return ret;
+            return nullptr;
         },
         [&, this](WhileLoop const &while_loop) -> Value * {
+            /**
+             *      br <cond>, loop, loop_end
+             * loop:
+             *      <loop body...>
+             *      br <cond>, loop, loop_end
+             * loop_end:
+             *      ...
+             */
+
             Value *cond_val = visitASTNode(*while_loop.m_condi);
             if (!cond_val) throw_err("Null condition expr for if-else statement!");
             Function *parent_func = builder.GetInsertBlock()->getParent();
 
             // create while loop blocks
             auto *loopBB = BasicBlock::Create(context, "loop");
+            auto *loopEndBB = BasicBlock::Create(context, "loop_end");
+
+            builder.CreateCondBr(cond_val, loopBB, loopEndBB);
+
+            // loop body
+            parent_func->getBasicBlockList().push_back(loopBB);
+            builder.SetInsertPoint(loopBB);
+            visitASTNode(*while_loop.m_loop_body);
+
+            // re-check condition
+            cond_val = visitASTNode(*while_loop.m_condi);
+            if (!cond_val) throw_err("Null condition expr for if-else statement!");
+            // reset BB for recursive loops
+            loopBB = builder.GetInsertBlock();
+            builder.CreateCondBr(cond_val, loopBB, loopEndBB);
+
+            // exit loop
+            parent_func->getBasicBlockList().push_back(loopEndBB);
+            builder.SetInsertPoint(loopEndBB);
+
+            return nullptr;
         },
         [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
 }

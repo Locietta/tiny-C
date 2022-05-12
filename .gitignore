@@ -3,6 +3,7 @@ build
 
 *.png
 **/output/**
+a.out
 
 # antlr4 
 C*Listener.{h,cpp}
