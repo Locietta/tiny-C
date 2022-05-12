@@ -267,9 +267,9 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // if either is float, convert them to floats
             bool is_f_left = isFloat(lhs), is_f_right = isFloat(rhs);
-            if (is_f_left) builder.CreateSIToFP(lhs, getLLVMType(Float));
-            if (is_f_right) builder.CreateSIToFP(rhs, getLLVMType(Float));
             bool is_f = is_f_left || is_f_right;
+            if (is_f && !is_f_left) builder.CreateSIToFP(lhs, getLLVMType(Float));
+            if (is_f && !is_f_right) builder.CreateSIToFP(rhs, getLLVMType(Float));
 
             switch (exp.m_operator) {
             case Plus: return builder.CreateAdd(lhs, rhs, "add");
