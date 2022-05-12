@@ -125,7 +125,7 @@ static bool isFloat(Value *val) {
     return valT == floatT || valT == doubleT;
 }
 
-Value *IRGenerator::visitASTNode(const Expr &expr) {
+Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
     auto &context = *m_context_ptr;
     auto &module = *m_module_ptr;
     auto &builder = *m_builder_ptr;
@@ -169,7 +169,6 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // Create new basic block
             BasicBlock *entryBlock = BasicBlock::Create(context, "func_entry", p_func);
             builder.SetInsertPoint(entryBlock);
-            // TODO: ↓ func args should be in the same scope as func body
             scope_manager scope_mgr(symTable);
 
             for (auto &arg : p_func->args()) {

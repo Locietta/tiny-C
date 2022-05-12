@@ -64,8 +64,8 @@ int main(int argc, const char *argv[]) {
     });
 
     IRGenerator builder{visitor.m_decls};
-    builder.codegen(); // TODO: IR generation
-    builder.printIR("output/a.ll");
+    builder.codegen();
+    builder.printIR("output/a.ll"); // TODO: output filename should correspond to input filename
 
     // avoid `visitor` destruction before png generation is done
     png_gen_complete.wait(); //< waiting png-gen
