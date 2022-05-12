@@ -10,6 +10,20 @@ struct scope_manager { // RAII scope manager
     ~scope_manager() { sym.pop_scope(); }
 };
 
+struct loop_BB_manager { // RAII loop basic block manager
+    inline static BasicBlock *head = nullptr, *tail = nullptr;
+    BasicBlock *tmp_head, *tmp_tail;
+    loop_BB_manager(BasicBlock *loop_head, BasicBlock *loop_tail)
+        : tmp_head(loop_head), tmp_tail(loop_tail) {
+        std::swap(head, tmp_head);
+        std::swap(tail, tmp_tail);
+    }
+    ~loop_BB_manager() {
+        std::swap(head, tmp_head);
+        std::swap(tail, tmp_tail);
+    }
+};
+
 // ------------ Implementation of `SymbolTable` -------------------
 
 void SymbolTable::push_scope() {
@@ -374,9 +388,6 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // then branch
             builder.SetInsertPoint(thenBB);
             visitASTNode(*exp.m_if);
-
-            // recursive if-else can change blocks where we're emitting code
-            thenBB = builder.GetInsertBlock();
             builder.CreateBr(mergeBB);
 
             // else branch
@@ -384,7 +395,6 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             builder.SetInsertPoint(elseBB);
             if (exp.m_else) visitASTNode(*exp.m_else);
             builder.CreateBr(mergeBB);
-            elseBB = builder.GetInsertBlock();
 
             // exit if
             parent_func->getBasicBlockList().push_back(mergeBB);
@@ -392,6 +402,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             return nullptr;
         },
+        [&, this](Break const &) -> Value * { return builder.CreateBr(loop_BB_manager::tail); },
+        [&, this](Continue const &) -> Value * { return builder.CreateBr(loop_BB_manager::head); },
         [&, this](WhileLoop const &while_loop) -> Value * {
             /**
              *      br <cond>, loop, loop_end
@@ -409,6 +421,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // create while loop blocks
             auto *loopBB = BasicBlock::Create(context, "loop");
             auto *loopEndBB = BasicBlock::Create(context, "loop_end");
+            loop_BB_manager BB_mgr(loopBB, loopEndBB);
 
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
 
@@ -417,11 +430,9 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             builder.SetInsertPoint(loopBB);
             visitASTNode(*while_loop.m_loop_body);
 
-            // re-check condition
+            // jump back to loop head
             cond_val = visitASTNode(*while_loop.m_condi);
             if (!cond_val) throw_err("Null condition expr for if-else statement!");
-            // reset BB for recursive loops
-            loopBB = builder.GetInsertBlock();
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
 
             // exit loop
@@ -429,6 +440,31 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             builder.SetInsertPoint(loopEndBB);
 
             return nullptr;
+        },
+        [&, this](ForLoop const &for_loop) -> Value * {
+            /// just convert it to while loop...
+
+            // codegen for init expr
+            scope_manager scope_mgr(symTable); // the var defined here shouldn't leak out of loop
+            if (for_loop.m_init) visitASTNode(*for_loop.m_init);
+
+            // pack iter into loop body
+            if (for_loop.m_loop_body->is<CompoundExpr>()) {
+                for_loop.m_loop_body->as<CompoundExpr>().push_back(for_loop.m_iter);
+                return visitASTNode(WhileLoop{
+                    .m_condi = for_loop.m_condi,
+                    .m_loop_body = for_loop.m_loop_body,
+                });
+            } else {
+                CompoundExpr comp_expr(2);
+                comp_expr[0] = for_loop.m_loop_body;
+                comp_expr[1] = for_loop.m_iter;
+
+                return visitASTNode(WhileLoop{
+                    .m_condi = for_loop.m_condi,
+                    .m_loop_body = std::make_shared<Expr>(std::move(comp_expr)),
+                });
+            }
         },
         [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); } //
     );
