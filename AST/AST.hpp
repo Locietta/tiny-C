@@ -51,7 +51,7 @@ enum DataTypes {
     // etc
 };
 
-constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_map{
+constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_to_str{
     {Plus, "+"},       {PlusPlus, "++"},   {Minus, "-"},         {MinusMinus, "--"},
     {Mul, "*"},        {Div, "/"},         {Mod, "%"},           {Equal, "=="},
     {Greater, ">"},    {Less, "<"},        {GreaterEqual, ">="}, {LessEqual, "<="},
@@ -60,7 +60,7 @@ constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> o
     {AndAnd, "&&"},    {Not, "!"},
 };
 
-constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_map{
+constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_to_str{
     {Void, "void"},
     {Char, "char"},
     {Int, "int"},
@@ -73,8 +73,9 @@ constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count>
 namespace static_check {
 
 constexpr auto check_map = []() { // magic: compile-time check
-    static_assert(op_map.sz == enum_op_count, "Incomplete dispatch for op_enum->string map!");
-    static_assert(type_map.sz == enum_type_count, "Incomplete dispatch for type_enum->string map!");
+    static_assert(op_to_str.sz == enum_op_count, "Incomplete dispatch for op_enum->string map!");
+    static_assert(type_to_str.sz == enum_type_count,
+                  "Incomplete dispatch for type_enum->string map!");
     return true; // no-use
 }();
 

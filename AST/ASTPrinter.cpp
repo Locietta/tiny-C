@@ -51,7 +51,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         [this](Variable const &var) {
             assert(!var.m_var_name.empty() && "Var with no name OR default empty Expr");
             print2buf(" (var:{}", var.m_var_name);
-            print2buf(" type:{}", type_map[var.m_var_type]);
+            print2buf(" type:{}", type_to_str[var.m_var_type]);
             if (var.m_var_init) sexp_fmt(*var.m_var_init);
             print2buf(")");
         },
@@ -63,12 +63,12 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             print2buf(")");
         },
         [this](Unary const &ua) {
-            print2buf(" (unary:{}", op_map[ua.m_operator]);
+            print2buf(" (unary:{}", op_to_str[ua.m_operator]);
             sexp_fmt(*ua.m_operand);
             print2buf(")");
         },
         [this](Binary const &bin) {
-            print2buf(" (binary:{}", op_map[bin.m_operator]);
+            print2buf(" (binary:{}", op_to_str[bin.m_operator]);
             sexp_fmt(*bin.m_operand1);
             sexp_fmt(*bin.m_operand2);
             print2buf(")");
@@ -102,7 +102,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         },
         [this](FuncDef const &func) {
             print2buf(" (func:{}", func.m_name);
-            print2buf(" ret_type:{}", type_map[func.m_return_type]);
+            print2buf(" ret_type:{}", type_to_str[func.m_return_type]);
             for (const auto &p_para : func.m_para_list) {
                 sexp_fmt(*p_para);
             }
