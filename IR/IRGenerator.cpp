@@ -154,7 +154,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // Create new basic block
             BasicBlock *entryBlock = BasicBlock::Create(context, "func_entry", p_func);
             builder.SetInsertPoint(entryBlock);
-            // FIXME: ↓ func args should be in the same scope as func body
+            // TODO: ↓ func args should be in the same scope as func body
             scope_manager scope_mgr(symTable);
 
             for (auto &arg : p_func->args()) {
@@ -239,7 +239,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             builder.CreateUnreachable();
             return ret;
         },
-        [&, this](FuncCall const &func_call) -> Value * {
+        [&, this](FuncCall const &func_call) -> Value * { // FIXME
             // Look up the name in the global module table.
             Function *CalleeF = module.getFunction(func_call.m_func_name);
             if (!CalleeF) {
@@ -375,5 +375,6 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             return nullptr;
         },
-        [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); });
+        [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); } //
+    );
 }

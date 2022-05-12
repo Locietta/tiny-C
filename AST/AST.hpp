@@ -172,7 +172,7 @@ struct FuncCall {
     NameRef m_func_name;
 };
 
-struct FuncDef {
+struct FuncDef { // TODO: prototypes should be separated
     NameRef m_name;
     std::vector<std::shared_ptr<Expr>> m_para_list; // should put `Variable` here
     std::shared_ptr<Expr> m_body;
