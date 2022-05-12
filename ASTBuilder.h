@@ -1,5 +1,5 @@
 #pragma once
-#include "AST.h"
+#include "AST.hpp"
 #include "CParserBaseVisitor.h"
 #include <string>
 using namespace antlrcpp;

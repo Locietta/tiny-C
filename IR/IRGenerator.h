@@ -1,6 +1,6 @@
 #pragma once
 
-#include "AST.h"
+#include "AST.hpp"
 
 namespace fs = std::filesystem;
 

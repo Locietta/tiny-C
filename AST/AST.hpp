@@ -5,8 +5,6 @@
 #include "variant_magic.hpp"
 
 #include <cassert>
-#include <fmt/core.h>
-#include <fmt/format.h>
 #include <memory>
 #include <string>
 #include <utility>
@@ -207,21 +205,4 @@ struct Expr : public impl::Base {
     constexpr T &as() {
         return std::get<T>(*this);
     }
-};
-
-#include <filesystem>
-
-namespace fs = std::filesystem;
-
-class ASTPrinter {
-public:
-    std::shared_ptr<Expr> AST;
-    void ToPNG(fs::path const &exe_path, fs::path const &filename);
-    // void ToPNG(const char *exe_path, const std::string &filename);
-
-    ASTPrinter(std::shared_ptr<Expr> ast) : AST{std::move(ast)} {}
-
-private:
-    void sexp_fmt(const Expr &e);
-    fmt::memory_buffer buffer; // buf for graphviz file output
 };

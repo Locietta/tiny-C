@@ -3,6 +3,7 @@
 #include <memory>
 
 #include "ASTBuilder.h"
+#include "ASTPrinter.h"
 #include "CLexer.h"
 #include "CParser.h"
 #include "IRGenerator.h"
