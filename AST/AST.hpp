@@ -51,7 +51,7 @@ enum DataTypes {
     // etc
 };
 
-constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> op_to_str{
+constexpr ConstexprMap<enum Operators, std::string_view, enum_op_count> op_to_str{
     {Plus, "+"},       {PlusPlus, "++"},   {Minus, "-"},         {MinusMinus, "--"},
     {Mul, "*"},        {Div, "/"},         {Mod, "%"},           {Equal, "=="},
     {Greater, ">"},    {Less, "<"},        {GreaterEqual, ">="}, {LessEqual, "<="},
@@ -60,7 +60,7 @@ constexpr static ConstexprMap<enum Operators, std::string_view, enum_op_count> o
     {AndAnd, "&&"},    {Not, "!"},
 };
 
-constexpr static ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_to_str{
+constexpr ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_to_str{
     {Void, "void"},
     {Char, "char"},
     {Int, "int"},

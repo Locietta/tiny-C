@@ -1,4 +1,5 @@
 #include "IRGenerator.h"
+#include "AST.hpp"
 #include "utility.hpp"
 
 using namespace llvm;
@@ -264,6 +265,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
         [&, this](Binary const &exp) -> Value * {
             Value *lhs = visitASTNode(*exp.m_operand1);
             Value *rhs = visitASTNode(*exp.m_operand2);
+            if (!lhs) throw_err("null left oprand for {} operation?", op_to_str[exp.m_operator]);
+            if (!rhs) throw_err("null right oprand for {} operation?", op_to_str[exp.m_operator]);
 
             // if either is float, convert them to floats
             bool is_f_left = isFloat(lhs), is_f_right = isFloat(rhs);
@@ -288,6 +291,20 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 } else {
                     return builder.CreateCmp(CmpInst::ICMP_EQ, lhs, rhs, "ieq");
                 }
+            }
+            case Assign: {
+                // FIXME: ad hoc, unable to handle *ptr
+                if (!exp.m_operand1->is<NameRef>()) {
+                    throw_err("LHS of Assign op is expected to be lvalue!");
+                }
+
+                // extract var ref
+                StringRef var_name = exp.m_operand1->as<NameRef>();
+                Value *var_ref = symTable[var_name];
+                if (!var_ref) var_ref = module.getNamedGlobal(var_name);
+                if (!var_ref) throw_err("Try to use undeclared var:{}\n", var_name);
+
+                return builder.CreateStore(rhs, var_ref);
             }
             default: llvm_unreachable("Unimplemented op?");
             }
