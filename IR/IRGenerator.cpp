@@ -263,6 +263,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             return builder.CreateCall(CalleeF, ArgsV, "calltmp");
         },
         [&, this](Binary const &exp) -> Value * {
+            // refactor? builder.CreateBinOp(llvm::BinaryOperator::Add);
             Value *lhs = visitASTNode(*exp.m_operand1);
             Value *rhs = visitASTNode(*exp.m_operand2);
             if (!lhs) throw_err("null left oprand for {} operation?", op_to_str[exp.m_operator]);
@@ -292,6 +293,43 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                     return builder.CreateCmp(CmpInst::ICMP_EQ, lhs, rhs, "ieq");
                 }
             }
+            case NotEqual: {
+                if (is_f) {
+                    return builder.CreateCmp(CmpInst::FCMP_ONE, lhs, rhs, "fne");
+                } else {
+                    return builder.CreateCmp(CmpInst::ICMP_NE, lhs, rhs, "ine");
+                }
+            }
+            case Greater: {
+                if (is_f) {
+                    return builder.CreateCmp(CmpInst::FCMP_OGT, lhs, rhs, "fgt");
+                } else {
+                    return builder.CreateCmp(CmpInst::ICMP_SGT, lhs, rhs, "sigt");
+                }
+            }
+            case GreaterEqual: {
+                if (is_f) {
+                    return builder.CreateCmp(CmpInst::FCMP_OGE, lhs, rhs, "fge");
+                } else {
+                    return builder.CreateCmp(CmpInst::ICMP_SGE, lhs, rhs, "sige");
+                }
+            }
+            case Less: {
+                if (is_f) {
+                    return builder.CreateCmp(CmpInst::FCMP_OLT, lhs, rhs, "flt");
+                } else {
+                    return builder.CreateCmp(CmpInst::ICMP_SLT, lhs, rhs, "silt");
+                }
+            }
+            case LessEqual: {
+                if (is_f) {
+                    return builder.CreateCmp(CmpInst::FCMP_OLE, lhs, rhs, "fle");
+                } else {
+                    return builder.CreateCmp(CmpInst::ICMP_SLE, lhs, rhs, "sile");
+                }
+            }
+            case OrOr: return builder.CreateOr(lhs, rhs, "or");
+            case AndAnd: return builder.CreateAnd(lhs, rhs, "and");
             case Assign: {
                 // FIXME: ad hoc, unable to handle *ptr
                 if (!exp.m_operand1->is<NameRef>()) {
