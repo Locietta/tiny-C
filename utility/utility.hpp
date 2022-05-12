@@ -19,3 +19,10 @@ template <typename ExcepT = std::logic_error, typename... T>
 [[noreturn]] inline void throw_err(fmt::format_string<T...> fmt, T &&...args) {
     throw ExcepT(fmt::format(fmt, std::forward<T>(args)...));
 }
+
+template <typename... T>
+inline void dbg_print(fmt::format_string<T...> fmt, T &&...args) {
+#ifndef NDEBUG
+    fmt::print(stderr, fmt, std::forward<T>(args)...);
+#endif
+}
