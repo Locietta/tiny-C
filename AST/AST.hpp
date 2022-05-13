@@ -86,10 +86,13 @@ constexpr auto check_map = []() { // magic: compile-time check
 /// Forward Declaration
 struct Expr; // generic node
 
+// dummy null expr node
+struct Null {};
+
 using CompoundExpr = std::vector<std::shared_ptr<Expr>>;
 
-struct ConstVar : public std::variant<char, int, float, double, std::string> {
-    using Base = std::variant<char, int, float, double, std::string>;
+struct ConstVar : public std::variant<bool, char, int, float, double, std::string> {
+    using Base = std::variant<bool, char, int, float, double, std::string>;
     using Base::Base;
     using Base::operator=;
 
@@ -182,7 +185,7 @@ struct FuncDef { // TODO: prototypes should be separated
 
 namespace impl { // Magic Base
 using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
-                          FuncCall, FuncDef, CompoundExpr, NameRef, Continue, Break, ForLoop>;
+                          FuncCall, FuncDef, CompoundExpr, NameRef, Continue, Break, ForLoop, Null>;
 }
 
 // dummy warpper for variant

@@ -442,7 +442,13 @@ public:
         return ret;
     }
 
-    std::any visitExpr_stmt(CParser::Expr_stmtContext *ctx) override { return visit(ctx->expr()); }
+    std::any visitExpr_stmt(CParser::Expr_stmtContext *ctx) override {
+        if (auto expr = ctx->expr()) {
+            return visit(expr);
+        } else {
+            return make_shared<Expr>(Null{});
+        }
+    }
 
     std::any visitParen_factor(CParser::Paren_factorContext *ctx) override {
         return visit(ctx->expr());

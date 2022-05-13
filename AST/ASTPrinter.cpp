@@ -126,7 +126,8 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             if (loop.m_iter) sexp_fmt(*loop.m_iter);
             sexp_fmt(*loop.m_loop_body);
             print2buf(")");
-        });
+        },
+        [this](Null const &) { print2buf(" [NULL]"); });
 }
 
 void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {
