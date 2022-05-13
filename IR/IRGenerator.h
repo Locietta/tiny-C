@@ -29,6 +29,7 @@ public:
 private:
     llvm::Value *visitASTNode(const Expr &expr);
     llvm::Type *getLLVMType(enum DataTypes);
+    llvm::Value *boolCast(llvm::Value *val);
 
     std::vector<std::shared_ptr<Expr>> const &m_trees; // reference to ASTBuilder
 

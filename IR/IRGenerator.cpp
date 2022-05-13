@@ -125,6 +125,19 @@ static bool isFloat(Value *val) {
     return valT == floatT || valT == doubleT;
 }
 
+Value *IRGenerator::boolCast(Value *val) { // NOTE: ad-hoc bool cast
+    LLVMContext &context = val->getContext();
+    auto &builder = *m_builder_ptr;
+    Type *type = val->getType();
+    if (type == getLLVMType(Int) || type == getLLVMType(Char)) {
+        return builder.CreateICmpNE(val, ConstantInt::get(type, 0), "bool_cast");
+    } else if (type == getLLVMType(Float)) {
+        // QUESTION: comparison relaxation for float?
+        return builder.CreateFCmpONE(val, ConstantFP::get(type, 0), "bool_cast");
+    }
+    return val;
+}
+
 Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
     auto &context = *m_context_ptr;
     auto &module = *m_module_ptr;
@@ -140,6 +153,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
                 return ConstantInt::get(context, APInt(32, var.as<int>(), true));
             } else if (var.is<char>()) {
                 return ConstantInt::get(context, APInt(8, var.as<int>()));
+            } else if (var.is<bool>()) {
+                return ConstantInt::get(context, APInt(1, var.as<bool>()));
             }
             llvm_unreachable("Unsupported ConstVar type!");
         },
@@ -375,6 +390,9 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
 
             Value *cond_val = visitASTNode(*exp.m_condi);
             if (!cond_val) throw_err("Null condition expr for if-else statement!");
+
+            cond_val = boolCast(cond_val);
+
             Function *parent_func = builder.GetInsertBlock()->getParent();
 
             // create new basic block for branches
@@ -415,6 +433,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
 
             Value *cond_val = visitASTNode(*while_loop.m_condi);
             if (!cond_val) throw_err("Null condition expr for if-else statement!");
+            cond_val = boolCast(cond_val);
+
             Function *parent_func = builder.GetInsertBlock()->getParent();
 
             // create while loop blocks
@@ -430,8 +450,6 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
             visitASTNode(*while_loop.m_loop_body);
 
             // jump back to loop head
-            cond_val = visitASTNode(*while_loop.m_condi);
-            if (!cond_val) throw_err("Null condition expr for if-else statement!");
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
 
             // exit loop
@@ -446,12 +464,21 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
             // codegen for init expr
             scope_manager scope_mgr(symTable); // the var defined here shouldn't leak out of loop
             if (for_loop.m_init) visitASTNode(*for_loop.m_init);
+            auto cond = for_loop.m_condi ? for_loop.m_condi : make_shared<Expr>(ConstVar{true});
+
+            // no iter is given
+            if (!for_loop.m_iter) {
+                return visitASTNode(WhileLoop{
+                    .m_condi = cond,
+                    .m_loop_body = for_loop.m_loop_body,
+                });
+            }
 
             // pack iter into loop body
             if (for_loop.m_loop_body->is<CompoundExpr>()) {
                 for_loop.m_loop_body->as<CompoundExpr>().push_back(for_loop.m_iter);
                 return visitASTNode(WhileLoop{
-                    .m_condi = for_loop.m_condi,
+                    .m_condi = cond,
                     .m_loop_body = for_loop.m_loop_body,
                 });
             } else {
@@ -460,11 +487,12 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
                 comp_expr[1] = for_loop.m_iter;
 
                 return visitASTNode(WhileLoop{
-                    .m_condi = for_loop.m_condi,
+                    .m_condi = cond,
                     .m_loop_body = std::make_shared<Expr>(std::move(comp_expr)),
                 });
             }
         },
+        [](Null const &) -> Value * { return nullptr; },
         [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); } //
     );
 }
