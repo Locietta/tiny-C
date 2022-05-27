@@ -11,10 +11,16 @@ int x = 3, y = 4;
 // }
 
 int main(void) {
-    int sum = 0;
-    for (int i = 0; i <= 10; i = i + 1) {
+    int sum = 0, a = 1;
+    // for (int i = 0; i <= 10; i = i + 1) {
+    //     sum = sum + 1;
+    // }
+    for (;;) {
         sum = sum + 1;
+        return sum;
     }
+    sum = sum * sum;
+
     return sum;
     // ;
     // for (;;) return 1;

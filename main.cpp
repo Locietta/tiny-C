@@ -32,15 +32,8 @@ int main(int argc, const char *argv[]) {
     CLexer lexer(&input);
     CommonTokenStream tokens(&lexer);
 
-    tokens.fill();
-    // for (auto token : tokens.getTokens()) {
-    //     std::cout << token->toString() << std::endl;
-    // }
-
     CParser parser(&tokens);
     tree::ParseTree *tree = parser.prog();
-
-    // std::cout << tree->toStringTree(&parser) << std::endl << std::endl;
 
     ASTBuilder visitor;
     visitor.visit(tree);
@@ -65,9 +58,14 @@ int main(int argc, const char *argv[]) {
 
     IRGenerator builder{visitor.m_decls};
     builder.codegen();
-    builder.printIR("output/a.ll"); // TODO: output filename should correspond to input filename
 
-    // avoid `visitor` destruction before png generation is done
-    png_gen_complete.wait(); //< waiting png-gen
+    // TODO: output filename should correspond to input filename
+    auto ir_print_complete = builder.dumpIR("output/a.ll");
+
+    builder.emitOBJ("output/a.o").wait();
+
+    // wait for async threads, this avoids early destruction of resources
+    png_gen_complete.wait();
+    ir_print_complete.wait();
     return 0;
 }

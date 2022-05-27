@@ -66,6 +66,9 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
       m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
       m_symbolTable_ptr(std::make_unique<SymbolTable>()),
       m_func_opt(std::make_unique<legacy::FunctionPassManager>(m_module_ptr.get())) {
+
+    // ------------------- Initialize Optimization Passes -------------------
+
     // Promote allocas to registers.
     m_func_opt->add(llvm::createPromoteMemoryToRegisterPass());
     // Do simple "peephole" optimizations
@@ -76,8 +79,65 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
     m_func_opt->add(llvm::createGVNPass());
     // Simplify the control flow graph (deleting unreachable blocks etc).
     m_func_opt->add(llvm::createCFGSimplificationPass());
+    m_func_opt->add(llvm::createStructurizeCFGPass());
 
     m_func_opt->doInitialization();
+}
+
+std::future<void> IRGenerator::emitOBJ(fs::path const &asm_path) ASYNC {
+    return std::async(
+        std::launch::async,
+        [this, &asm_path]() { // Initialize the target registry etc.
+            InitializeAllTargetInfos();
+            InitializeAllTargets();
+            InitializeAllTargetMCs();
+            InitializeAllAsmParsers();
+            InitializeAllAsmPrinters();
+
+            // construct target machine
+            auto targetTriple = llvm::sys::getDefaultTargetTriple();
+
+            std::string error;
+            auto target = TargetRegistry::lookupTarget(targetTriple, error);
+
+            if (!target) {
+                throw_err<std::runtime_error>("Failed to initialize target: {}", error);
+            }
+
+            auto CPU = "x86-64-v3";
+            auto features = "";
+            TargetOptions opt;
+            auto RM = Optional<Reloc::Model>();
+            auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
+
+            // set module target
+            m_module_ptr->setTargetTriple(targetTriple);
+            m_module_ptr->setDataLayout(targetMachine->createDataLayout());
+
+            // open file to emit
+            std::error_code ec;
+            raw_fd_ostream out(asm_path.native(), ec);
+
+            if (ec) {
+                fmt::print(stderr,
+                           "Error Category: {}, Code: {}, Message: {}\n",
+                           ec.category().name(),
+                           ec.value(),
+                           ec.message());
+            }
+
+            legacy::PassManager pass;
+            auto fileType = CGFT_ObjectFile;
+
+            if (targetMachine->addPassesToEmitFile(pass, out, nullptr, fileType)) {
+                throw_err<std::runtime_error>("target machine can't emit a file of this type");
+            }
+
+            pass.run(*m_module_ptr);
+            out.flush();
+
+            dbg_print("[DEBUG] obj file is written to {}\n", asm_path.native());
+        });
 }
 
 llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
@@ -90,20 +150,29 @@ llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     return llvm::Type::getVoidTy(*m_context_ptr);
 }
 
-void IRGenerator::printIR(fs::path const &asm_path) const {
-    std::error_code ec;
-    raw_fd_ostream out(asm_path.native(), ec);
-    if (!ec) {
-        out << *m_module_ptr;
-        return;
-    }
+std::future<void> IRGenerator::dumpIR(fs::path const &asm_path) const ASYNC {
+    return std::async(std::launch::async, [this, &asm_path]() {
+        std::error_code ec;
+        raw_fd_ostream out(asm_path.native(), ec);
+        if (!ec) {
+            out << *m_module_ptr;
+            return;
+        }
 
-    // error when opening file
-    fmt::print(stderr,
-               "Error Category: {}, Code: {}, Message: {}\n",
-               ec.category().name(),
-               ec.value(),
-               ec.message());
+        // error when opening file
+        fmt::print(stderr,
+                   "Error Category: {}, Code: {}, Message: {}\n",
+                   ec.category().name(),
+                   ec.value(),
+                   ec.message());
+    });
+}
+
+std::string IRGenerator::dumpIRString() const {
+    std::string buf;
+    raw_string_ostream out(buf);
+    out << *m_module_ptr;
+    return out.str();
 }
 
 void IRGenerator::codegen() {
@@ -288,14 +357,15 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // Look up the name in the global module table.
             Function *CalleeF = module.getFunction(func_call.m_func_name);
             if (!CalleeF) {
-                llvm_unreachable("Unknown function referenced");
-                return nullptr;
+                throw_err("Unknown function `{}` referenced", func_call.m_func_name);
             }
 
             // If argument mismatch error.
             if (CalleeF->arg_size() != func_call.m_para_list.size()) {
-                llvm_unreachable("Incorrect # arguments passed");
-                return nullptr;
+                throw_err("Function `{}` expects {} arguments, but provided {}",
+                          func_call.m_func_name,
+                          CalleeF->arg_size(),
+                          func_call.m_para_list.size());
             }
 
             std::vector<Value *> ArgsV;
@@ -479,7 +549,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             return nullptr;
         },
-        [&, this](ForLoop const &for_loop) -> Value * { // FIXME
+        [&, this](ForLoop const &for_loop) -> Value * {
             /// just convert it to while loop...
 
             // codegen for init expr
