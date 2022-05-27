@@ -37,5 +37,7 @@ private:
     std::unique_ptr<llvm::Module> m_module_ptr;
     std::unique_ptr<llvm::IRBuilder<>> m_builder_ptr;
 
+    std::unique_ptr<llvm::legacy::FunctionPassManager> m_func_opt;
+
     std::unique_ptr<SymbolTable> m_symbolTable_ptr;
 };

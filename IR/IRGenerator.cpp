@@ -64,7 +64,21 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
     : m_trees(trees), m_context_ptr(std::make_unique<llvm::LLVMContext>()),
       m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
       m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
-      m_symbolTable_ptr(std::make_unique<SymbolTable>()) {}
+      m_symbolTable_ptr(std::make_unique<SymbolTable>()),
+      m_func_opt(std::make_unique<legacy::FunctionPassManager>(m_module_ptr.get())) {
+    // Promote allocas to registers.
+    m_func_opt->add(llvm::createPromoteMemoryToRegisterPass());
+    // Do simple "peephole" optimizations
+    m_func_opt->add(llvm::createInstructionCombiningPass());
+    // Reassociate expressions.
+    m_func_opt->add(llvm::createReassociatePass());
+    // Eliminate Common SubExpressions.
+    m_func_opt->add(llvm::createGVNPass());
+    // Simplify the control flow graph (deleting unreachable blocks etc).
+    m_func_opt->add(llvm::createCFGSimplificationPass());
+
+    m_func_opt->doInitialization();
+}
 
 llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     switch (type) {
@@ -138,7 +152,7 @@ Value *IRGenerator::boolCast(Value *val) { // NOTE: ad-hoc bool cast
     return val;
 }
 
-Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
+Value *IRGenerator::visitASTNode(const Expr &expr) {
     auto &context = *m_context_ptr;
     auto &module = *m_module_ptr;
     auto &builder = *m_builder_ptr;
@@ -193,6 +207,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
                 StringRef argName = func_node.m_para_list[argNo]->as<Variable>().m_var_name;
                 AllocaInst *alloc = builder.CreateAlloca(argType, nullptr, argName);
                 symTable.insert(argName, alloc);
+                builder.CreateStore(&arg, alloc);
             }
 
             // codegen for func body
@@ -201,7 +216,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
             // verification
             verifyFunction(*p_func);
 
-            // TODO: mem2reg
+            // function optimizer
+            m_func_opt->run(*p_func);
             return p_func;
         },
         [&, this](CompoundExpr const &comp) -> Value * {
@@ -265,7 +281,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
                 ret = builder.CreateRetVoid();
             }
             // mark dead code after `return`
-            builder.CreateUnreachable();
+            // builder.CreateUnreachable();
             return ret;
         },
         [&, this](FuncCall const &func_call) -> Value * { // FIXME
@@ -423,16 +439,18 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
         [&, this](Continue const &) -> Value * { return builder.CreateBr(loop_BB_manager::head); },
         [&, this](WhileLoop const &while_loop) -> Value * {
             /**
+             *      <cond> = cmp ...
              *      br <cond>, loop, loop_end
              * loop:
              *      <loop body...>
+             *      <cond> = cmp ...
              *      br <cond>, loop, loop_end
              * loop_end:
              *      ...
              */
 
             Value *cond_val = visitASTNode(*while_loop.m_condi);
-            if (!cond_val) throw_err("Null condition expr for if-else statement!");
+            if (!cond_val) throw_err("Null condition expr for loop statement!");
             cond_val = boolCast(cond_val);
 
             Function *parent_func = builder.GetInsertBlock()->getParent();
@@ -450,6 +468,9 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
             visitASTNode(*while_loop.m_loop_body);
 
             // jump back to loop head
+            cond_val = visitASTNode(*while_loop.m_condi);
+            if (!cond_val) throw_err("Null condition expr for loop statement!");
+            cond_val = boolCast(cond_val);
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
 
             // exit loop
@@ -458,7 +479,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) { // FIXME: empty Expr?
 
             return nullptr;
         },
-        [&, this](ForLoop const &for_loop) -> Value * {
+        [&, this](ForLoop const &for_loop) -> Value * { // FIXME
             /// just convert it to while loop...
 
             // codegen for init expr
