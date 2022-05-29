@@ -15,18 +15,9 @@ using namespace antlr4;
 namespace fs = std::filesystem;
 
 int main(int argc, const char *argv[]) {
-    std::shared_ptr<std::ifstream> file_holder;
-    std::istream *is = nullptr;
-    if (argc > 1) {
-        file_holder = make_shared<std::ifstream>(argv[1], std::ios_base::in);
-        if (!*file_holder) {
-            fmt::print("Failed to open file {}! Aborting...\n", argv[1]);
-            return 1;
-        }
-        is = file_holder.get();
-    } else {
-        is = &std::cin;
-    }
+    std::unique_ptr<std::ifstream> is{
+        make_unique<std::ifstream>((argc > 1 ? argv[1] : "-"), std::ios_base::in),
+    };
 
     ANTLRInputStream input(*is);
     CLexer lexer(&input);
