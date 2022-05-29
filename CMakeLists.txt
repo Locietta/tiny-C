@@ -14,19 +14,7 @@ find_package(fmt REQUIRED)
 message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 
-ANTLR_TARGET(CLexer CLexer.g4 LEXER
-    PACKAGE antlrcpp)
-
-ANTLR_TARGET(CParser CParser.g4 PARSER
-    PACKAGE antlrcpp
-    DEPENDS_ANTLR CLexer
-    COMPILE_FLAGS -lib ${ANTLR_CLexer_OUTPUT_DIR}
-    VISITOR
-    LISTENER)
-
 # ANTLR4 includes
-include_directories(${ANTLR_CLexer_OUTPUT_DIR})
-include_directories(${ANTLR_CParser_OUTPUT_DIR})
 include_directories(${ANTLR4_INCLUDE_DIR})
 message(STATUS "Antlr4 Runtime Dir: ${ANTLR4_INCLUDE_DIR}")
 
@@ -40,5 +28,5 @@ include_directories(${CMAKE_CURRENT_LIST_DIR}/utility)
 add_subdirectory(AST)
 add_subdirectory(IR)
 
-# top-level code
+# top-level driver code
 add_subdirectory(driver)
