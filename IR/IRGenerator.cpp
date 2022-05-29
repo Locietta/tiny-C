@@ -60,7 +60,7 @@ bool SymbolTable::inCurrScope(llvm::StringRef var_name) const {
 
 // ------------ Implementation of `IRGenerator` -------------------
 
-IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
+IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int opt_level)
     : m_trees(trees), m_context_ptr(std::make_unique<llvm::LLVMContext>()),
       m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
       m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
@@ -69,17 +69,27 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
 
     // ------------------- Initialize Optimization Passes -------------------
 
-    // Promote allocas to registers.
-    m_func_opt->add(llvm::createPromoteMemoryToRegisterPass());
-    // Do simple "peephole" optimizations
-    m_func_opt->add(llvm::createInstructionCombiningPass());
-    // Reassociate expressions.
-    m_func_opt->add(llvm::createReassociatePass());
-    // Eliminate Common SubExpressions.
-    m_func_opt->add(llvm::createGVNPass());
-    // Simplify the control flow graph (deleting unreachable blocks etc).
-    m_func_opt->add(llvm::createCFGSimplificationPass());
-    m_func_opt->add(llvm::createStructurizeCFGPass());
+    if (opt_level > 0) {
+        // Promote allocas to registers.
+        m_func_opt->add(llvm::createPromoteMemoryToRegisterPass());
+        // Do simple "peephole" optimizations
+        m_func_opt->add(llvm::createInstructionCombiningPass());
+        // Reassociate expressions.
+        m_func_opt->add(llvm::createReassociatePass());
+        // Eliminate Common SubExpressions.
+        m_func_opt->add(llvm::createGVNPass());
+
+        // Dead Code Elimination
+        m_func_opt->add(llvm::createDeadCodeEliminationPass());
+        m_func_opt->add(llvm::createDeadStoreEliminationPass());
+        m_func_opt->add(llvm::createAggressiveDCEPass());
+
+        // Simplify the control flow graph (deleting unreachable blocks etc).
+        m_func_opt->add(llvm::createCFGSimplificationPass());
+        m_func_opt->add(llvm::createStructurizeCFGPass());
+        m_func_opt->add(llvm::createLowerGuardIntrinsicPass());
+        m_func_opt->add(llvm::createCorrelatedValuePropagationPass());
+    }
 
     m_func_opt->doInitialization();
 }

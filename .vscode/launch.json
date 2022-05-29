@@ -6,7 +6,7 @@
       "type": "lldb",
       "request": "launch",
       "program": "${command:cmake.launchTargetPath}",
-      "args": ["sample/a.cpp"],
+      "args": ["-O=1", "sample/a.cpp"],
       "stopAtEntry": false,
       "cwd": "${workspaceFolder}",
       "environment": [
@@ -34,6 +34,6 @@
           "value": "${env:PATH}:${command:cmake.getLaunchTargetDirectory}"
         }
       ]
-    },
+    }
   ]
 }

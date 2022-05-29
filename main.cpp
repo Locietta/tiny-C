@@ -7,6 +7,7 @@
 #include "CLexer.h"
 #include "CParser.h"
 #include "IRGenerator.h"
+#include "OptHandler.h"
 #include "antlr4-runtime.h"
 
 using namespace antlrcpp;
@@ -14,9 +15,13 @@ using namespace antlr4;
 
 namespace fs = std::filesystem;
 
+OptHandler cli_inputs;
+
 int main(int argc, const char *argv[]) {
+    llvm::cl::ParseCommandLineOptions(argc, argv, "Simple compiler for C", nullptr, nullptr, false);
+
     std::unique_ptr<std::ifstream> is{
-        make_unique<std::ifstream>((argc > 1 ? argv[1] : "-"), std::ios_base::in),
+        make_unique<std::ifstream>(cli_inputs.input_filename, std::ios_base::in),
     };
 
     ANTLRInputStream input(*is);
@@ -47,7 +52,7 @@ int main(int argc, const char *argv[]) {
         }
     });
 
-    IRGenerator builder{visitor.m_decls};
+    IRGenerator builder{visitor.m_decls, cli_inputs.opt_level};
     builder.codegen();
 
     // TODO: output filename should correspond to input filename
