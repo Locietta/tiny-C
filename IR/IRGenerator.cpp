@@ -1,5 +1,6 @@
 #include "IRGenerator.h"
 #include "AST.hpp"
+#include "ASTSimplify.h"
 #include "DeadBlockRemove.h"
 #include "utility.hpp"
 
@@ -62,11 +63,13 @@ bool SymbolTable::inCurrScope(llvm::StringRef var_name) const {
 // ------------ Implementation of `IRGenerator` -------------------
 
 IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int opt_level)
-    : m_trees(trees), m_context_ptr(std::make_unique<llvm::LLVMContext>()),
+    : m_simplifiedAST(trees), m_context_ptr(std::make_unique<llvm::LLVMContext>()),
       m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
       m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
       m_symbolTable_ptr(std::make_unique<SymbolTable>()),
       m_func_opt(std::make_unique<legacy::FunctionPassManager>(m_module_ptr.get())) {
+
+    simplifyAST(m_simplifiedAST);
 
     // ------------------- Initialize Optimization Passes -------------------
 
@@ -195,7 +198,7 @@ std::string IRGenerator::dumpIRString() const {
 }
 
 void IRGenerator::codegen() {
-    for (const auto &tree : m_trees) {
+    for (const auto &tree : m_simplifiedAST) {
         if (tree->is<InitExpr>()) {
             // global vars
             for (const auto &p_node : tree->as<InitExpr>()) {

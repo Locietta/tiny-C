@@ -37,7 +37,7 @@ private:
     llvm::Type *getLLVMType(enum DataTypes);
     llvm::Value *boolCast(llvm::Value *val);
 
-    std::vector<std::shared_ptr<Expr>> const &m_trees; // reference to ASTBuilder
+    std::vector<std::shared_ptr<Expr>> m_simplifiedAST;
 
     std::unique_ptr<llvm::LLVMContext> m_context_ptr;
     std::unique_ptr<llvm::Module> m_module_ptr;

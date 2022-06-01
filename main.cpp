@@ -38,30 +38,30 @@ int main(int argc, const char *argv[]) {
     system(fmt::format("mkdir -p {} && rm -rf {}/*", output_dir, output_dir).c_str());
 
     // async: launch png generation in a separate thread
-    auto png_gen_complete =
-        std::async(std::launch::async, [m_decls = visitor.m_decls, &output_dir, argv]() {
-            for (int i = 0; const auto &decl : m_decls) {
-                assert(decl->is<FuncDef>() || decl->is<InitExpr>());
-                ASTPrinter decl_printer{decl};
-                fs::path pic_path{output_dir};
-                if (decl->is<FuncDef>()) {
-                    pic_path.append(fmt::format("func:{}", decl->as<FuncDef>().m_name));
-                } else {
-                    pic_path.append(fmt::format("global_decl{}", i++));
-                }
-                decl_printer.ToPNG(argv[0], pic_path);
+    auto dumpAST = std::async(std::launch::async, [m_decls = visitor.m_decls, &output_dir, argv]() {
+        for (int i = 0; const auto &decl : m_decls) {
+            assert(decl->is<FuncDef>() || decl->is<InitExpr>());
+            ASTPrinter decl_printer{decl};
+            fs::path pic_path{output_dir};
+            if (decl->is<FuncDef>()) {
+                pic_path.append(fmt::format("func:{}", decl->as<FuncDef>().m_name));
+            } else {
+                pic_path.append(fmt::format("global_decl{}", i++));
             }
-        });
+            decl_printer.ToPNG(argv[0], pic_path);
+        }
+    });
 
-    IRGenerator builder{visitor.m_decls, cli_inputs.opt_level};
-    builder.codegen();
+    auto IRcodegen = std::async(std::launch::async, [&visitor, &output_dir]() {
+        IRGenerator builder{visitor.m_decls, cli_inputs.opt_level};
+        builder.codegen();
+        // TODO: output filename should correspond to input filename
+        auto dumpIR = builder.dumpIR("output/a.ll");
 
-    // TODO: output filename should correspond to input filename
-    auto ir_print_complete = builder.dumpIR("output/a.ll");
+        // wait for async threads, this avoids early destruction of resources
+        builder.emitOBJ("output/a.o").wait();
+        dumpIR.wait();
+    });
 
-    builder.emitOBJ("output/a.o").wait();
-
-    // wait for async threads, this avoids early destruction of resources
-    ir_print_complete.wait();
     return 0;
 }
