@@ -1,5 +1,6 @@
 #include "IRGenerator.h"
 #include "AST.hpp"
+#include "DeadBlockRemove.h"
 #include "utility.hpp"
 
 using namespace llvm;
@@ -70,25 +71,33 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int op
     // ------------------- Initialize Optimization Passes -------------------
 
     if (opt_level > 0) {
-        // Promote allocas to registers.
-        m_func_opt->add(llvm::createPromoteMemoryToRegisterPass());
         // Do simple "peephole" optimizations
+        m_func_opt->add(llvm::createPromoteMemoryToRegisterPass());
         m_func_opt->add(llvm::createInstructionCombiningPass());
-        // Reassociate expressions.
         m_func_opt->add(llvm::createReassociatePass());
-        // Eliminate Common SubExpressions.
         m_func_opt->add(llvm::createGVNPass());
-
-        // Dead Code Elimination
-        m_func_opt->add(llvm::createDeadCodeEliminationPass());
-        m_func_opt->add(llvm::createDeadStoreEliminationPass());
-        m_func_opt->add(llvm::createAggressiveDCEPass());
+        m_func_opt->add(llvm::createMergedLoadStoreMotionPass());
 
         // Simplify the control flow graph (deleting unreachable blocks etc).
         m_func_opt->add(llvm::createCFGSimplificationPass());
+        m_func_opt->add(llvm::createLoopSimplifyPass());
         m_func_opt->add(llvm::createStructurizeCFGPass());
         m_func_opt->add(llvm::createLowerGuardIntrinsicPass());
         m_func_opt->add(llvm::createCorrelatedValuePropagationPass());
+        m_func_opt->add(llvm::createFixIrreduciblePass());
+
+        // Unify exits
+        m_func_opt->add(llvm::createUnifyLoopExitsPass());
+        m_func_opt->add(llvm::createUnifyFunctionExitNodesPass());
+
+        // Dead Code Elimination
+        m_func_opt->add(llvm::createSCCPPass());
+        m_func_opt->add(llvm::createDeadCodeEliminationPass());
+        m_func_opt->add(llvm::createDeadStoreEliminationPass());
+        m_func_opt->add(llvm::createAggressiveDCEPass());
+        m_func_opt->add(llvm::createLoopDeletionPass());
+
+        m_func_opt->add(new DeadBlockRemove());
     }
 
     m_func_opt->doInitialization();
@@ -297,6 +306,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // function optimizer
             m_func_opt->run(*p_func);
+
             return p_func;
         },
         [&, this](CompoundExpr const &comp) -> Value * {
@@ -363,7 +373,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // builder.CreateUnreachable();
             return ret;
         },
-        [&, this](FuncCall const &func_call) -> Value * { // FIXME
+        [&, this](FuncCall const &func_call) -> Value * {
             // Look up the name in the global module table.
             Function *CalleeF = module.getFunction(func_call.m_func_name);
             if (!CalleeF) {
@@ -380,8 +390,11 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             std::vector<Value *> ArgsV;
             for (const auto &para : func_call.m_para_list) {
-                ArgsV.push_back(visitASTNode(*para));
-                if (!ArgsV.back()) return nullptr;
+                auto argVal = visitASTNode(*para);
+                if (!argVal) {
+                    throw_err("Null argument when calling function {}", func_call.m_func_name);
+                }
+                ArgsV.push_back(argVal);
             }
 
             return builder.CreateCall(CalleeF, ArgsV, "calltmp");

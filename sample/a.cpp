@@ -1,27 +1,25 @@
-#include <stdio.h>
+// #include <stdio.h>
 
 int x = 3, y = 4;
 
-// int foo(int a, int b) {
-//     int sum = 0;
-//     for (int i = 0; i <= 10; i = i + 1) {
-//         sum = sum + i * a - b;
-//     }
-//     return sum;
-// }
+int foo(int a, int b) {
+    int sum;
+    sum = a + b;
+    return sum;
+}
 
 int main(void) {
-    int sum = 0, a = 1;
-    // for (int i = 0; i <= 10; i = i + 1) {
-    //     sum = sum + 1;
-    // }
-    for (;;) {
-        sum = sum + 1;
-        return sum;
-    }
-    sum = sum * sum;
+    // int sum = 0, a = 1, tmp;
+    // // for (int i = 0; i <= 10; i = i + 1) {
+    // //     sum = sum + 1;
+    // // }
 
-    return sum;
+    // if (sum) {
+    //     return 1;
+    // }
+
+    // tmp = foo(sum, a);
+    // return tmp;
     // ;
     // for (;;) return 1;
     // while (0) {
@@ -44,5 +42,6 @@ int main(void) {
 
     // printf("%d\n", sum);
     // if (sum == 3025) return 114;
+    return 0;
     return 0;
 }
