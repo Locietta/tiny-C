@@ -13,16 +13,15 @@ struct scope_manager { // RAII scope manager
 };
 
 struct loop_BB_manager { // RAII loop basic block manager
-    inline static BasicBlock *head = nullptr, *tail = nullptr;
+    inline static BasicBlock *continueBB = nullptr, *breakBB = nullptr;
     BasicBlock *tmp_head, *tmp_tail;
-    loop_BB_manager(BasicBlock *loop_head, BasicBlock *loop_tail)
-        : tmp_head(loop_head), tmp_tail(loop_tail) {
-        std::swap(head, tmp_head);
-        std::swap(tail, tmp_tail);
+    loop_BB_manager(BasicBlock *conti, BasicBlock *brk) : tmp_head(conti), tmp_tail(brk) {
+        std::swap(continueBB, tmp_head);
+        std::swap(breakBB, tmp_tail);
     }
     ~loop_BB_manager() {
-        std::swap(head, tmp_head);
-        std::swap(tail, tmp_tail);
+        std::swap(continueBB, tmp_head);
+        std::swap(breakBB, tmp_tail);
     }
 };
 
@@ -34,6 +33,7 @@ void SymbolTable::push_scope() {
 
 void SymbolTable::pop_scope() {
     // NOTE: globals should never be poped
+    assert(!locals.empty() && "try to pop scope from empty symbol table?");
     locals.pop_back();
 }
 
@@ -60,6 +60,15 @@ bool SymbolTable::inCurrScope(llvm::StringRef var_name) const {
     return curr_scope.find(var_name) != curr_scope.end();
 }
 
+static PassBuilder::OptimizationLevel int2OptLevel(int opt_level) {
+    switch (opt_level) {
+    case 0: return PassBuilder::OptimizationLevel::O0;
+    case 1: return PassBuilder::OptimizationLevel::O1;
+    case 2: return PassBuilder::OptimizationLevel::O2;
+    default: return PassBuilder::OptimizationLevel::O3;
+    }
+}
+
 // ------------ Implementation of `IRGenerator` -------------------
 
 IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int opt_level)
@@ -67,99 +76,77 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int op
       m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
       m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
       m_symbolTable_ptr(std::make_unique<SymbolTable>()),
-      m_func_opt(std::make_unique<legacy::FunctionPassManager>(m_module_ptr.get())) {
+      m_analysis(std::make_unique<IRAnalysis>()) {
 
+    /// trivial heuristic transform on AST
     simplifyAST(m_simplifiedAST);
 
-    // ------------------- Initialize Optimization Passes -------------------
+    /// LLVM Pass (New PM)
+    PassBuilder PB;
+    PB.registerModuleAnalyses(m_analysis->MAM);
+    PB.registerCGSCCAnalyses(m_analysis->CGAM);
+    PB.registerFunctionAnalyses(m_analysis->FAM);
+    PB.registerLoopAnalyses(m_analysis->LAM);
+    PB.crossRegisterProxies(m_analysis->LAM, m_analysis->FAM, m_analysis->CGAM, m_analysis->MAM);
 
-    if (opt_level > 0) {
-        // Do simple "peephole" optimizations
-        m_func_opt->add(llvm::createPromoteMemoryToRegisterPass());
-        m_func_opt->add(llvm::createInstructionCombiningPass());
-        m_func_opt->add(llvm::createReassociatePass());
-        m_func_opt->add(llvm::createGVNPass());
-        m_func_opt->add(llvm::createMergedLoadStoreMotionPass());
-
-        // Simplify the control flow graph (deleting unreachable blocks etc).
-        m_func_opt->add(llvm::createCFGSimplificationPass());
-        m_func_opt->add(llvm::createLoopSimplifyPass());
-        m_func_opt->add(llvm::createStructurizeCFGPass());
-        m_func_opt->add(llvm::createLowerGuardIntrinsicPass());
-        m_func_opt->add(llvm::createCorrelatedValuePropagationPass());
-        m_func_opt->add(llvm::createFixIrreduciblePass());
-
-        // Unify exits
-        m_func_opt->add(llvm::createUnifyLoopExitsPass());
-        m_func_opt->add(llvm::createUnifyFunctionExitNodesPass());
-
-        // Dead Code Elimination
-        m_func_opt->add(llvm::createSCCPPass());
-        m_func_opt->add(llvm::createDeadCodeEliminationPass());
-        m_func_opt->add(llvm::createDeadStoreEliminationPass());
-        m_func_opt->add(llvm::createAggressiveDCEPass());
-        m_func_opt->add(llvm::createLoopDeletionPass());
-
-        m_func_opt->add(new DeadBlockRemove());
+    if (opt_level) {
+        m_optimizer = std::make_unique<ModulePassManager>(
+            PB.buildPerModuleDefaultPipeline(int2OptLevel(opt_level)));
+    } else { // disable opt: O0 isn't allowed by pipeline builder
+        m_optimizer = std::make_unique<ModulePassManager>();
     }
-
-    m_func_opt->doInitialization();
 }
 
-std::future<void> IRGenerator::emitOBJ(fs::path const &asm_path) ASYNC {
-    return std::async(
-        std::launch::async,
-        [this, &asm_path]() { // Initialize the target registry etc.
-            InitializeAllTargetInfos();
-            InitializeAllTargets();
-            InitializeAllTargetMCs();
-            InitializeAllAsmParsers();
-            InitializeAllAsmPrinters();
+void IRGenerator::emitOBJ(fs::path const &asm_path) {
+    InitializeAllTargetInfos();
+    InitializeAllTargets();
+    InitializeAllTargetMCs();
+    InitializeAllAsmParsers();
+    InitializeAllAsmPrinters();
 
-            // construct target machine
-            auto targetTriple = llvm::sys::getDefaultTargetTriple();
+    // construct target machine
+    auto targetTriple = llvm::sys::getDefaultTargetTriple();
 
-            std::string error;
-            auto target = TargetRegistry::lookupTarget(targetTriple, error);
+    std::string error;
+    auto target = TargetRegistry::lookupTarget(targetTriple, error);
 
-            if (!target) {
-                throw_err<std::runtime_error>("Failed to initialize target: {}", error);
-            }
+    if (!target) {
+        throw_err<std::runtime_error>("Failed to initialize target: {}", error);
+    }
 
-            auto CPU = "x86-64-v3";
-            auto features = "";
-            TargetOptions opt;
-            auto RM = Optional<Reloc::Model>();
-            auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
+    auto CPU = "x86-64-v3";
+    auto features = "";
+    TargetOptions opt;
+    auto RM = Optional<Reloc::Model>();
+    auto targetMachine = target->createTargetMachine(targetTriple, CPU, features, opt, RM);
 
-            // set module target
-            m_module_ptr->setTargetTriple(targetTriple);
-            m_module_ptr->setDataLayout(targetMachine->createDataLayout());
+    // set module target
+    m_module_ptr->setTargetTriple(targetTriple);
+    m_module_ptr->setDataLayout(targetMachine->createDataLayout());
 
-            // open file to emit
-            std::error_code ec;
-            raw_fd_ostream out(asm_path.native(), ec);
+    // open file to emit
+    std::error_code ec;
+    raw_fd_ostream out(asm_path.native(), ec);
 
-            if (ec) {
-                fmt::print(stderr,
-                           "Error Category: {}, Code: {}, Message: {}\n",
-                           ec.category().name(),
-                           ec.value(),
-                           ec.message());
-            }
+    if (ec) {
+        fmt::print(stderr,
+                   "Error Category: {}, Code: {}, Message: {}\n",
+                   ec.category().name(),
+                   ec.value(),
+                   ec.message());
+    }
 
-            legacy::PassManager pass;
-            auto fileType = CGFT_ObjectFile;
+    legacy::PassManager pass;
+    auto fileType = CGFT_ObjectFile;
 
-            if (targetMachine->addPassesToEmitFile(pass, out, nullptr, fileType)) {
-                throw_err<std::runtime_error>("target machine can't emit a file of this type");
-            }
+    if (targetMachine->addPassesToEmitFile(pass, out, nullptr, fileType)) {
+        throw_err<std::runtime_error>("target machine can't emit a file of this type");
+    }
 
-            pass.run(*m_module_ptr);
-            out.flush();
+    pass.run(*m_module_ptr);
+    out.flush();
 
-            dbg_print("[DEBUG] obj file is written to {}\n", asm_path.native());
-        });
+    dbg_print("[DEBUG] obj file is written to {}\n", asm_path.native());
 }
 
 llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
@@ -172,22 +159,20 @@ llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
     return llvm::Type::getVoidTy(*m_context_ptr);
 }
 
-std::future<void> IRGenerator::dumpIR(fs::path const &asm_path) const ASYNC {
-    return std::async(std::launch::async, [this, &asm_path]() {
-        std::error_code ec;
-        raw_fd_ostream out(asm_path.native(), ec);
-        if (!ec) {
-            out << *m_module_ptr;
-            return;
-        }
+void IRGenerator::dumpIR(fs::path const &asm_path) const {
+    std::error_code ec;
+    raw_fd_ostream out(asm_path.native(), ec);
+    if (!ec) {
+        out << *m_module_ptr;
+        return;
+    }
 
-        // error when opening file
-        fmt::print(stderr,
-                   "Error Category: {}, Code: {}, Message: {}\n",
-                   ec.category().name(),
-                   ec.value(),
-                   ec.message());
-    });
+    // error when opening file
+    fmt::print(stderr,
+               "Error Category: {}, Code: {}, Message: {}\n",
+               ec.category().name(),
+               ec.value(),
+               ec.message());
 }
 
 std::string IRGenerator::dumpIRString() const {
@@ -195,6 +180,38 @@ std::string IRGenerator::dumpIRString() const {
     raw_string_ostream out(buf);
     out << *m_module_ptr;
     return out.str();
+}
+
+void IRGenerator::emitBlock(BasicBlock *BB, bool IsFinished) {
+    auto &Builder = *m_builder_ptr;
+
+    BasicBlock *CurBB = Builder.GetInsertBlock();
+
+    // Fall out of the current block (if necessary).
+    if (!CurBB || CurBB->getTerminator()) {
+        // If there is no insert point or the previous block is already
+        // terminated, don't touch it.
+    } else {
+        // Otherwise, create a fall-through branch.
+        Builder.CreateBr(BB);
+    }
+
+    Builder.ClearInsertionPoint();
+
+    if (IsFinished && BB->use_empty()) {
+        delete BB;
+        return;
+    }
+
+    Function *CurFn = CurBB->getParent();
+
+    // Place the block after the current block, if possible, or else at
+    // the end of the function.
+    if (CurBB && CurBB->getParent())
+        CurFn->getBasicBlockList().insertAfter(CurBB->getIterator(), BB);
+    else
+        CurFn->getBasicBlockList().push_back(BB);
+    Builder.SetInsertPoint(BB);
 }
 
 void IRGenerator::codegen() {
@@ -220,6 +237,8 @@ void IRGenerator::codegen() {
             visitASTNode(*tree);
         }
     }
+
+    m_optimizer->run(*m_module_ptr, m_analysis->MAM);
 }
 
 static bool isFloat(Value *val) {
@@ -306,9 +325,6 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // verification
             verifyFunction(*p_func);
-
-            // function optimizer
-            m_func_opt->run(*p_func);
 
             return p_func;
         },
@@ -531,14 +547,19 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             return nullptr;
         },
-        [&, this](Break const &) -> Value * { return builder.CreateBr(loop_BB_manager::tail); },
-        [&, this](Continue const &) -> Value * { return builder.CreateBr(loop_BB_manager::head); },
+        [&, this](Break const &) -> Value * { return builder.CreateBr(loop_BB_manager::breakBB); },
+        [&, this](Continue const &) -> Value * {
+            return builder.CreateBr(loop_BB_manager::continueBB);
+        },
         [&, this](WhileLoop const &while_loop) -> Value * {
             /**
+             *      ...
              *      <cond> = cmp ...
              *      br <cond>, loop, loop_end
              * loop:
-             *      <loop body...>
+             *      [loop body...]
+             *      br latch
+             * latch:
              *      <cond> = cmp ...
              *      br <cond>, loop, loop_end
              * loop_end:
@@ -549,65 +570,88 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             if (!cond_val) throw_err("Null condition expr for loop statement!");
             cond_val = boolCast(cond_val);
 
-            Function *parent_func = builder.GetInsertBlock()->getParent();
-
             // create while loop blocks
             auto *loopBB = BasicBlock::Create(context, "loop");
+            auto *latchBB = BasicBlock::Create(context, "latch");
             auto *loopEndBB = BasicBlock::Create(context, "loop_end");
-            loop_BB_manager BB_mgr(loopBB, loopEndBB);
+            loop_BB_manager BB_mgr(latchBB, loopEndBB);
 
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
 
-            // loop body
-            parent_func->getBasicBlockList().push_back(loopBB);
-            builder.SetInsertPoint(loopBB);
+            // loop header (body)
+            emitBlock(loopBB);
             visitASTNode(*while_loop.m_loop_body);
 
-            // jump back to loop head
+            // latch
+            emitBlock(latchBB);
             cond_val = visitASTNode(*while_loop.m_condi);
             if (!cond_val) throw_err("Null condition expr for loop statement!");
             cond_val = boolCast(cond_val);
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
 
             // exit loop
-            parent_func->getBasicBlockList().push_back(loopEndBB);
-            builder.SetInsertPoint(loopEndBB);
+            emitBlock(loopEndBB);
 
             return nullptr;
         },
         [&, this](ForLoop const &for_loop) -> Value * {
-            /// just convert it to while loop...
+            /**
+             *      <init>
+             *      <cond> = cmp ...
+             *      br <cond>, loop, loop_end
+             * loop:
+             *      [loop body...]
+             *      br latch
+             * latch:
+             *      [iter]
+             *      <cond> = cmp ...
+             *      br <cond>, loop, loop_end
+             * loop_end:
+             *      ...
+             */
 
             // codegen for init expr
             scope_manager scope_mgr(symTable); // the var defined here shouldn't leak out of loop
             if (for_loop.m_init) visitASTNode(*for_loop.m_init);
-            auto cond = for_loop.m_condi ? for_loop.m_condi : make_shared<Expr>(ConstVar{true});
 
-            // no iter is given
-            if (!for_loop.m_iter) {
-                return visitASTNode(WhileLoop{
-                    .m_condi = cond,
-                    .m_loop_body = for_loop.m_loop_body,
-                });
-            }
+            // create for loop blocks
+            auto *loopBB = BasicBlock::Create(context, "loop");
+            auto *latchBB = BasicBlock::Create(context, "latch");
+            auto *loopEndBB = BasicBlock::Create(context, "loop_end");
+            loop_BB_manager BB_mgr(latchBB, loopEndBB);
 
-            // pack iter into loop body
-            if (for_loop.m_loop_body->is<CompoundExpr>()) {
-                for_loop.m_loop_body->as<CompoundExpr>().push_back(for_loop.m_iter);
-                return visitASTNode(WhileLoop{
-                    .m_condi = cond,
-                    .m_loop_body = for_loop.m_loop_body,
-                });
+            // loop entry
+            if (for_loop.m_condi) {
+                Value *cond_val = visitASTNode(*for_loop.m_condi);
+                if (!cond_val) throw_err("Null condition expr for loop statement!");
+                cond_val = boolCast(cond_val);
+                builder.CreateCondBr(cond_val, loopBB, loopEndBB);
             } else {
-                CompoundExpr comp_expr(2);
-                comp_expr[0] = for_loop.m_loop_body;
-                comp_expr[1] = for_loop.m_iter;
-
-                return visitASTNode(WhileLoop{
-                    .m_condi = cond,
-                    .m_loop_body = std::make_shared<Expr>(std::move(comp_expr)),
-                });
+                builder.CreateBr(loopBB);
             }
+
+            // loop header (body)
+            emitBlock(loopBB);
+            visitASTNode(*for_loop.m_loop_body);
+
+            // latch
+            emitBlock(latchBB);
+            if (for_loop.m_iter) {
+                visitASTNode(*for_loop.m_iter);
+            }
+            if (for_loop.m_condi) {
+                Value *cond_val = visitASTNode(*for_loop.m_condi);
+                if (!cond_val) throw_err("Null condition expr for loop statement!");
+                cond_val = boolCast(cond_val);
+                builder.CreateCondBr(cond_val, loopBB, loopEndBB);
+            } else {
+                builder.CreateBr(loopBB);
+            }
+
+            // exit loop
+            emitBlock(loopEndBB);
+
+            return nullptr;
         },
         [](Null const &) -> Value * { return nullptr; },
         [](auto const &) -> Value * { llvm_unreachable("Invalid AST Node!"); } //

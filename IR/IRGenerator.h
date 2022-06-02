@@ -4,8 +4,6 @@
 
 namespace fs = std::filesystem;
 
-#define ASYNC
-
 class SymbolTable {
 public:
     void push_scope();
@@ -20,6 +18,13 @@ private:
     llvm::SmallVector<llvm::StringMap<llvm::AllocaInst *>> locals; // llvm::AllocaInst *
 };
 
+struct IRAnalysis {
+    llvm::LoopAnalysisManager LAM;
+    llvm::FunctionAnalysisManager FAM;
+    llvm::CGSCCAnalysisManager CGAM;
+    llvm::ModuleAnalysisManager MAM;
+};
+
 class IRGenerator {
 public:
     IRGenerator() = delete;
@@ -28,14 +33,16 @@ public:
     void codegen();
 
     /// should be called only after codegen is done
-    [[nodiscard]] std::future<void> dumpIR(fs::path const &asm_path) const ASYNC;
+    void dumpIR(fs::path const &asm_path) const;
     [[nodiscard]] std::string dumpIRString() const;
-    std::future<void> emitOBJ(fs::path const &asm_path) ASYNC;
+    void emitOBJ(fs::path const &asm_path);
 
 private:
     llvm::Value *visitASTNode(const Expr &expr);
     llvm::Type *getLLVMType(enum DataTypes);
     llvm::Value *boolCast(llvm::Value *val);
+
+    void emitBlock(llvm::BasicBlock *BB, bool IsFinished = false);
 
     std::vector<std::shared_ptr<Expr>> m_simplifiedAST;
 
@@ -43,7 +50,8 @@ private:
     std::unique_ptr<llvm::Module> m_module_ptr;
     std::unique_ptr<llvm::IRBuilder<>> m_builder_ptr;
 
-    std::unique_ptr<llvm::legacy::FunctionPassManager> m_func_opt;
+    std::unique_ptr<IRAnalysis> m_analysis;
+    std::unique_ptr<llvm::ModulePassManager> m_optimizer;
 
     std::unique_ptr<SymbolTable> m_symbolTable_ptr;
 };

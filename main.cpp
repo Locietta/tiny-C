@@ -52,16 +52,12 @@ int main(int argc, const char *argv[]) {
         }
     });
 
-    auto IRcodegen = std::async(std::launch::async, [&visitor, &output_dir]() {
-        IRGenerator builder{visitor.m_decls, cli_inputs.opt_level};
-        builder.codegen();
-        // TODO: output filename should correspond to input filename
-        auto dumpIR = builder.dumpIR("output/a.ll");
+    IRGenerator builder{visitor.m_decls, cli_inputs.opt_level};
+    builder.codegen();
 
-        // wait for async threads, this avoids early destruction of resources
-        builder.emitOBJ("output/a.o").wait();
-        dumpIR.wait();
-    });
+    // TODO: output filename should correspond to input filename
+    builder.dumpIR("output/a.ll");
 
+    builder.emitOBJ("output/a.o");
     return 0;
 }
