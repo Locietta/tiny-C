@@ -20,6 +20,12 @@ OptHandler cli_inputs;
 int main(int argc, const char *argv[]) {
     llvm::cl::ParseCommandLineOptions(argc, argv, "Simple compiler for C", nullptr, nullptr, false);
 
+    if (cli_inputs.input_filename.empty()) {
+        fs::path exe_name{argv[0]};
+        fmt::print("{}: error: no input files\n", exe_name.filename().native());
+        return 1;
+    }
+
     std::unique_ptr<std::ifstream> is{
         make_unique<std::ifstream>(cli_inputs.input_filename, std::ios_base::in),
     };
@@ -34,30 +40,47 @@ int main(int argc, const char *argv[]) {
     ASTBuilder visitor;
     visitor.visit(tree);
 
-    std::string output_dir{"output"};
-    system(fmt::format("mkdir -p {} && rm -rf {}/*", output_dir, output_dir).c_str());
-
-    // async: launch png generation in a separate thread
-    auto dumpAST = std::async(std::launch::async, [m_decls = visitor.m_decls, &output_dir, argv]() {
-        for (int i = 0; const auto &decl : m_decls) {
-            assert(decl->is<FuncDef>() || decl->is<InitExpr>());
-            ASTPrinter decl_printer{decl};
-            fs::path pic_path{output_dir};
-            if (decl->is<FuncDef>()) {
-                pic_path.append(fmt::format("func:{}", decl->as<FuncDef>().m_name));
-            } else {
-                pic_path.append(fmt::format("global_decl{}", i++));
-            }
-            decl_printer.ToPNG(argv[0], pic_path);
+    if (cli_inputs.emitAST) {
+        const auto &output_dir = cli_inputs.pic_outdir;
+        fs::create_directory(output_dir.c_str());
+        for (const auto &dir_entry : fs::directory_iterator{output_dir.c_str()}) {
+            fs::remove_all(dir_entry);
         }
-    });
+
+        auto dumpAST = [m_decls = visitor.m_decls, &output_dir, argv]() {
+            for (int i = 0; const auto &decl : m_decls) {
+                assert(decl->is<FuncDef>() || decl->is<InitExpr>());
+                ASTPrinter decl_printer{decl};
+                fs::path pic_path{output_dir.c_str()};
+                if (decl->is<FuncDef>()) {
+                    pic_path.append(fmt::format("func:{}", decl->as<FuncDef>().m_name));
+                } else {
+                    pic_path.append(fmt::format("global_decl{}", i++));
+                }
+                decl_printer.ToPNG(argv[0], pic_path);
+            }
+        };
+
+        // async: launch AST pic generation in a separate thread
+        auto _ = std::async(std::launch::async, dumpAST);
+    }
 
     IRGenerator builder{visitor.m_decls, cli_inputs.opt_level};
     builder.codegen();
 
-    // TODO: output filename should correspond to input filename
-    builder.dumpIR("output/a.ll");
+    std::string out_name;
+    if (cli_inputs.output_filename.empty()) {
+        fs::path input{cli_inputs.input_filename.c_str()};
+        out_name = input.stem();
+    } else {
+        fs::path output{cli_inputs.output_filename.c_str()};
+        output.replace_extension("");
+        out_name = output;
+    }
 
-    builder.emitOBJ("output/a.o");
+    builder.dumpIR(fmt::format("{}.ll", out_name));
+
+    builder.emitOBJ(fmt::format("{}.o", out_name));
+
     return 0;
 }

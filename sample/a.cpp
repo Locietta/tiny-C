@@ -8,6 +8,13 @@ int foo(int a, int b) {
     return sum;
 }
 
+// int add(int a, int b) {
+//     if (a != 0) {
+//         return add(a - 1, b + 1);
+//     }
+//     return b;
+// }
+
 int main(void) {
     int sum = 100;
     // int i = 0;

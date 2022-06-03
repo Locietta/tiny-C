@@ -164,6 +164,7 @@ void IRGenerator::dumpIR(fs::path const &asm_path) const {
     raw_fd_ostream out(asm_path.native(), ec);
     if (!ec) {
         out << *m_module_ptr;
+        dbg_print("[DEBUG] LLVM IR is written to {}\n", asm_path.native());
         return;
     }
 

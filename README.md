@@ -26,12 +26,34 @@ cmake --build build --config Release
 ## Usage
 
 ```
-tinycc <source file> [-O=<opt-level>]
+$ ./tinycc -h
+OVERVIEW: Simple compiler for C
+USAGE: tinycc [options] <input file>
+
+OPTIONS:
+
+Color Options:
+
+  --color             - Use colors in output (default=autodetect)
+
+General options:
+
+  -O=<int>            - Choose optimization level
+  -a                  - Alias for --emit-ast
+  --emit-ast          - Emit tree graph for all ASTs
+  -o=<filename>       - Specify output filename
+  --pic-dir=<dirname> - Specify output directory of pics, default to `output`
+
+Generic Options:
+
+  --help              - Display available options (--help-hidden for more)
+  --help-list         - Display list of available options (--help-list-hidden for more)
+  --version           - Display the version of this program
 ```
 
-For example, `tinycc a.c -O=1` will produce optimized code under `output` folder, including `a.ll`(LLVM IR code), `a.o`(x86 machine code) and some AST graphs.
+For example, `tinycc a.c -O=1 -a` will produce optimized code including `a.ll`(LLVM IR code) and `a.o`(x86 machine code), and will generate AST graphs under `output` folder.
 
-Later you can also use `./view-cfg.sh output/a.ll` to view Control Flow Graph (CFG) of generated IR code.
+Later you can also use `./view-cfg.sh a.ll` to view Control Flow Graph (CFG) of generated IR code.
 
 ### Some Reference Links
 
