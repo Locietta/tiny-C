@@ -20,7 +20,7 @@ OptHandler cli_inputs;
 int main(int argc, const char *argv[]) {
     llvm::cl::ParseCommandLineOptions(argc, argv, "Simple compiler for C", nullptr, nullptr, false);
 
-    if (cli_inputs.input_filename.empty()) {
+    if (cli_inputs.input_filename.empty() || !fs::exists(cli_inputs.input_filename.c_str())) {
         fs::path exe_name{argv[0]};
         fmt::print("{}: error: no input files\n", exe_name.filename().native());
         return 1;
