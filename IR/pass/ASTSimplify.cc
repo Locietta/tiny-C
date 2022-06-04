@@ -27,7 +27,7 @@ static void simplifyVisitor(Expr &expr) {
         simplifyVisitor(*expr.as<FuncDef>().m_body);
     } else if (expr.is<IfElse>()) {
         simplifyVisitor(*expr.as<IfElse>().m_if);
-        simplifyVisitor(*expr.as<IfElse>().m_else);
+        if (expr.as<IfElse>().m_else) simplifyVisitor(*expr.as<IfElse>().m_else);
     } else if (expr.is<WhileLoop>()) {
         simplifyVisitor(*expr.as<WhileLoop>().m_loop_body);
     } else if (expr.is<ForLoop>()) {
