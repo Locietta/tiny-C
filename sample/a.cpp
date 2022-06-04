@@ -17,6 +17,8 @@ int fib(int n) {
 
 int gcd(int a, int b);
 
+void output_int(int num);
+
 int main(void) {
     int sum = 100;
     // int i = 0;
@@ -35,7 +37,8 @@ int main(void) {
     }
 
     // foo(sum, sum);
-    return gcd(sum, 120);
+    output_int(gcd(sum, 120));
+    return 0;
 }
 
 int gcd(int a, int b) {
