@@ -2,4 +2,4 @@
 
 opt --dot-cfg $1
 
-dot .main.dot -Tpng:cairo -o a.png
+dot .fib.dot -Tpng:cairo -o a.png

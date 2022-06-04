@@ -522,29 +522,23 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             cond_val = boolCast(cond_val);
 
-            Function *parent_func = builder.GetInsertBlock()->getParent();
-
             // create new basic block for branches
-            auto *thenBB = BasicBlock::Create(context, "then", parent_func);
+            auto *thenBB = BasicBlock::Create(context, "then");
             auto *elseBB = BasicBlock::Create(context, "else");
             auto *mergeBB = BasicBlock::Create(context, "if_end");
 
             builder.CreateCondBr(cond_val, thenBB, elseBB);
 
             // then branch
-            builder.SetInsertPoint(thenBB);
+            emitBlock(thenBB);
             visitASTNode(*exp.m_if);
-            builder.CreateBr(mergeBB);
 
             // else branch
-            parent_func->getBasicBlockList().push_back(elseBB);
-            builder.SetInsertPoint(elseBB);
+            emitBlock(elseBB);
             if (exp.m_else) visitASTNode(*exp.m_else);
-            builder.CreateBr(mergeBB);
 
-            // exit if
-            parent_func->getBasicBlockList().push_back(mergeBB);
-            builder.SetInsertPoint(mergeBB);
+            // exit if, don't emit if unreachable
+            emitBlock(mergeBB, true);
 
             return nullptr;
         },
@@ -590,8 +584,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             cond_val = boolCast(cond_val);
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
 
-            // exit loop
-            emitBlock(loopEndBB);
+            // exit loop, don't emit if unreachable
+            emitBlock(loopEndBB, true);
 
             return nullptr;
         },
@@ -649,8 +643,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 builder.CreateBr(loopBB);
             }
 
-            // exit loop
-            emitBlock(loopEndBB);
+            // exit loop, don't emit if unreachable
+            emitBlock(loopEndBB, true);
 
             return nullptr;
         },

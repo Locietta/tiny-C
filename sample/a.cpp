@@ -8,12 +8,12 @@ int foo(int a, int b) {
     return sum;
 }
 
-// int add(int a, int b) {
-//     if (a != 0) {
-//         return add(a - 1, b + 1);
-//     }
-//     return b;
-// }
+int fib(int n) {
+    if (n <= 1)
+        return 1;
+    else
+        return fib(n - 1) + fib(n - 2);
+}
 
 int main(void) {
     int sum = 100;
