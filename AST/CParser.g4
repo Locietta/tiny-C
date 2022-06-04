@@ -95,7 +95,9 @@ type_spec:
 	| Float
 	| Short
 	| Void
-	| Struct Identifier; // struct type
+	| Struct Identifier // struct type
+	| Identifier
+	;
 
 func_proto:
 	type_spec Identifier LeftParen params RightParen;

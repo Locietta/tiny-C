@@ -39,18 +39,6 @@ enum Operators {
     // etc
 };
 
-enum DataTypes {
-    Void = 0,
-    Char,
-    Int,
-    Float,
-    String,
-    Short,
-    Long,
-    enum_type_count
-    // etc
-};
-
 constexpr ConstexprMap<enum Operators, std::string_view, enum_op_count> op_to_str{
     {Plus, "+"},       {PlusPlus, "++"},   {Minus, "-"},         {MinusMinus, "--"},
     {Mul, "*"},        {Div, "/"},         {Mod, "%"},           {Equal, "=="},
@@ -60,22 +48,10 @@ constexpr ConstexprMap<enum Operators, std::string_view, enum_op_count> op_to_st
     {AndAnd, "&&"},    {Not, "!"},
 };
 
-constexpr ConstexprMap<enum DataTypes, std::string_view, enum_type_count> type_to_str{
-    {Void, "void"},
-    {Char, "char"},
-    {Int, "int"},
-    {Float, "float"},
-    {String, "string"},
-    {Short, "short"},
-    {Long, "long"},
-};
-
 namespace static_check {
 
 constexpr auto check_map = []() { // magic: compile-time check
     static_assert(op_to_str.sz == enum_op_count, "Incomplete dispatch for op_enum->string map!");
-    static_assert(type_to_str.sz == enum_type_count,
-                  "Incomplete dispatch for type_enum->string map!");
     return true; // no-use
 }();
 
@@ -113,7 +89,7 @@ struct ConstVar : public std::variant<bool, char, int, float, double, std::strin
 using NameRef = std::string;
 
 struct Variable {
-    enum DataTypes m_var_type;
+    std::string m_var_type;
     NameRef m_var_name;
     std::shared_ptr<Expr> m_var_init; // ConstVar
     // int m_array_size;   // if variable is not array, then size = 0
@@ -179,7 +155,7 @@ struct FuncCall {
 struct FuncProto {
     NameRef m_name;
     std::vector<std::shared_ptr<Expr>> m_para_list; // should put `Variable` here
-    enum DataTypes m_return_type;
+    std::string m_return_type;
     [[nodiscard]] std::string_view getName() const { return m_name; }
 };
 

@@ -51,7 +51,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         [this](Variable const &var) {
             assert(!var.m_var_name.empty() && "Var with no name OR default empty Expr");
             print2buf(" (var:{}", var.m_var_name);
-            print2buf(" type:{}", type_to_str[var.m_var_type]);
+            print2buf(" type:{}", var.m_var_type);
             if (var.m_var_init) sexp_fmt(*var.m_var_init);
             print2buf(")");
         },
@@ -102,7 +102,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         },
         [this](FuncProto const &proto) {
             print2buf(" (proto");
-            print2buf(" ret_type:{}", type_to_str[proto.m_return_type]);
+            print2buf(" ret_type:{}", proto.m_return_type);
             for (const auto &p_para : proto.m_para_list) {
                 sexp_fmt(*p_para);
             }

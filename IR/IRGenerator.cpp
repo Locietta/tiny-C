@@ -6,12 +6,6 @@
 
 using namespace llvm;
 
-struct scope_manager { // RAII scope manager
-    SymbolTable &sym;
-    scope_manager(SymbolTable &sym) : sym{sym} { sym.push_scope(); }
-    ~scope_manager() { sym.pop_scope(); }
-};
-
 struct loop_BB_manager { // RAII loop basic block manager
     inline static BasicBlock *continueBB = nullptr, *breakBB = nullptr;
     BasicBlock *tmp_head, *tmp_tail;
@@ -25,41 +19,6 @@ struct loop_BB_manager { // RAII loop basic block manager
     }
 };
 
-// ------------ Implementation of `SymbolTable` -------------------
-
-void SymbolTable::push_scope() {
-    locals.push_back(StringMap<AllocaInst *>{});
-}
-
-void SymbolTable::pop_scope() {
-    // NOTE: globals should never be poped
-    assert(!locals.empty() && "try to pop scope from empty symbol table?");
-    locals.pop_back();
-}
-
-void SymbolTable::insert(llvm::StringRef var_name, llvm::AllocaInst *val) {
-    assert(!locals.empty() && "No scope available for variable insertion!");
-    locals.back().insert({var_name, val});
-}
-
-// array-like read
-llvm::AllocaInst *SymbolTable::operator[](llvm::StringRef var_name) const {
-    // NOLINTNEXTLINE
-    for (auto it = locals.rbegin(); it != locals.rend(); ++it) {
-        const auto &map = *it;
-        if (auto pair_it = map.find(var_name); pair_it != map.end()) {
-            return pair_it->getValue();
-        }
-    }
-    return nullptr;
-}
-
-bool SymbolTable::inCurrScope(llvm::StringRef var_name) const {
-    if (locals.empty()) llvm_unreachable("try to query locals in null scope?");
-    const auto &curr_scope = locals.back();
-    return curr_scope.find(var_name) != curr_scope.end();
-}
-
 static PassBuilder::OptimizationLevel int2OptLevel(int opt_level) {
     switch (opt_level) {
     case 0: return PassBuilder::OptimizationLevel::O0;
@@ -69,14 +28,33 @@ static PassBuilder::OptimizationLevel int2OptLevel(int opt_level) {
     }
 }
 
+// ------------ Implementation of `TypeTable` ---------------------
+
+TypeTable::TypeTable(llvm::LLVMContext &ctx) {
+    push_scope();
+
+    // add primitive types
+    symbols[0].insert({"int", llvm::Type::getInt32Ty(ctx)});
+    symbols[0].insert({"float", llvm::Type::getFloatTy(ctx)});
+    symbols[0].insert({"char", llvm::Type::getInt8Ty(ctx)});
+    symbols[0].insert({"double", llvm::Type::getDoubleTy(ctx)});
+    symbols[0].insert({"void", llvm::Type::getVoidTy(ctx)});
+}
+
+TypeTable::~TypeTable() {
+    assert(symbols.size() == 1 && "Unmatched type scope?");
+    pop_scope();
+}
+
 // ------------ Implementation of `IRGenerator` -------------------
 
 IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int opt_level)
     : m_simplifiedAST(trees), m_context_ptr(std::make_unique<llvm::LLVMContext>()),
-      m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
       m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
+      m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
+      m_analysis(std::make_unique<IRAnalysis>()),
       m_symbolTable_ptr(std::make_unique<SymbolTable>()),
-      m_analysis(std::make_unique<IRAnalysis>()) {
+      m_typeTable_ptr(std::make_unique<TypeTable>(*m_context_ptr)) {
 
     /// trivial heuristic transform on AST
     simplifyAST(m_simplifiedAST);
@@ -149,16 +127,6 @@ void IRGenerator::emitOBJ(fs::path const &asm_path) {
     dbg_print("[DEBUG] obj file is written to {}\n", asm_path.native());
 }
 
-llvm::Type *IRGenerator::getLLVMType(enum DataTypes type) {
-    switch (type) {
-    case Int: return llvm::Type::getInt32Ty(*m_context_ptr); break;
-    case Float: return llvm::Type::getFloatTy(*m_context_ptr); break;
-    case Char: return llvm::Type::getInt8Ty(*m_context_ptr); break;
-    default: break;
-    }
-    return llvm::Type::getVoidTy(*m_context_ptr);
-}
-
 void IRGenerator::dumpIR(fs::path const &asm_path) const {
     std::error_code ec;
     raw_fd_ostream out(asm_path.native(), ec);
@@ -221,7 +189,7 @@ void IRGenerator::codegen() {
             // global vars
             for (const auto &p_node : tree->as<InitExpr>()) {
                 const auto &var = p_node->as<Variable>();
-                auto var_type = getLLVMType(var.m_var_type);
+                auto var_type = (*m_typeTable_ptr)[var.m_var_type];
                 auto *globalVar = cast<GlobalVariable>(
                     m_module_ptr->getOrInsertGlobal(var.m_var_name, var_type) //
                 );
@@ -253,10 +221,11 @@ static bool isFloat(Value *val) {
 Value *IRGenerator::boolCast(Value *val) { // NOTE: ad-hoc bool cast
     LLVMContext &context = val->getContext();
     auto &builder = *m_builder_ptr;
+    auto &typeTable = *m_typeTable_ptr;
     Type *type = val->getType();
-    if (type == getLLVMType(Int) || type == getLLVMType(Char)) {
+    if (type == typeTable["int"] || type == typeTable["char"]) {
         return builder.CreateICmpNE(val, ConstantInt::get(type, 0), "bool_cast");
-    } else if (type == getLLVMType(Float)) {
+    } else if (type == typeTable["float"] || type == typeTable["double"]) {
         // QUESTION: comparison relaxation for float?
         return builder.CreateFCmpONE(val, ConstantFP::get(type, 0), "bool_cast");
     }
@@ -268,6 +237,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
     auto &module = *m_module_ptr;
     auto &builder = *m_builder_ptr;
     auto &symTable = *m_symbolTable_ptr;
+    auto &typeTable = *m_typeTable_ptr;
 
     return match<Value *>(
         expr,
@@ -290,11 +260,11 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 SmallVector<Type *> funcArgsTypes;
                 for (const auto &p_para : func_proto.m_para_list) {
                     const auto &para = p_para->as<Variable>();
-                    if (para.m_var_type != Void) { // skip Void param
-                        funcArgsTypes.push_back(getLLVMType(para.m_var_type));
+                    if (para.m_var_type != "void") { // skip Void param
+                        funcArgsTypes.push_back(typeTable[para.m_var_type]);
                     }
                 }
-                Type *retType = getLLVMType(func_proto.m_return_type);
+                Type *retType = typeTable[func_proto.m_return_type];
                 FunctionType *func_type = FunctionType::get(retType, funcArgsTypes, false);
                 p_func = Function::Create(func_type,
                                           Function::ExternalLinkage,
@@ -318,7 +288,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // Create new basic block
             BasicBlock *entryBlock = BasicBlock::Create(context, "func_entry", p_func);
             builder.SetInsertPoint(entryBlock);
-            scope_manager scope_mgr(symTable);
+            scope_manager scope_mgr(*this);
 
             for (auto &arg : p_func->args()) {
                 Type *argType = arg.getType();
@@ -337,7 +307,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             return p_func;
         },
         [&, this](CompoundExpr const &comp) -> Value * {
-            scope_manager scope_mgr(symTable);
+            scope_manager scope_mgr(*this);
             for (const auto &p_expr : comp) {
                 visitASTNode(*p_expr);
             }
@@ -369,7 +339,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 throw_err("Duplicate declaration of `{}`\n", var.m_var_name);
             }
 
-            Type *var_type = getLLVMType(var.m_var_type);
+            Type *var_type = typeTable[var.m_var_type];
             AllocaInst *p_new_var = builder.CreateAlloca(var_type, nullptr, var.m_var_name);
             if (!p_new_var) [[unlikely]] {
                 throw_err<std::runtime_error>("Interal compiler error: failed to allocate {}\n",
@@ -436,8 +406,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // if either is float, convert them to floats
             bool is_f_left = isFloat(lhs), is_f_right = isFloat(rhs);
             bool is_f = is_f_left || is_f_right;
-            if (is_f && !is_f_left) builder.CreateSIToFP(lhs, getLLVMType(Float));
-            if (is_f && !is_f_right) builder.CreateSIToFP(rhs, getLLVMType(Float));
+            if (is_f && !is_f_left) builder.CreateSIToFP(lhs, typeTable["float"]);
+            if (is_f && !is_f_right) builder.CreateSIToFP(rhs, typeTable["float"]);
 
             switch (exp.m_operator) {
             case Plus: return builder.CreateAdd(lhs, rhs, "add");
@@ -620,7 +590,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
              */
 
             // codegen for init expr
-            scope_manager scope_mgr(symTable); // the var defined here shouldn't leak out of loop
+            scope_manager scope_mgr(*this); // the var defined here shouldn't leak out of loop
             if (for_loop.m_init) visitASTNode(*for_loop.m_init);
 
             // create for loop blocks

@@ -52,7 +52,7 @@ public:
         auto ret = make_shared<Expr>(InitExpr{});
         auto &curr_node = ret->as<InitExpr>(); // InitExpr curr_node;
 
-        auto type = any_cast<enum DataTypes>(visit(ctx->type_spec()));
+        auto type = any_cast<std::string>(visit(ctx->type_spec()));
         const auto &simple_var_decls = ctx->simple_var_decl();
 
         for (auto simple_var : simple_var_decls) {
@@ -71,17 +71,19 @@ public:
 
     std::any visitType_spec(CParser::Type_specContext *ctx) override {
         if (ctx->Char()) {
-            return Char;
+            return "char"s;
         } else if (ctx->Int()) {
-            return Int;
+            return "int"s;
         } else if (ctx->Long()) {
-            return Long;
+            return "long"s;
         } else if (ctx->Float()) {
-            return Float;
+            return "float"s;
         } else if (ctx->Short()) {
-            return Short;
+            return "short"s;
         } else if (ctx->Void()) {
-            return Void;
+            return "void"s;
+        } else if (ctx->Identifier()) {
+            return ctx->Identifier()->getText();
         } else {
             // error
             assert(false);
@@ -116,7 +118,7 @@ public:
         return make_shared<Expr>(FuncProto{
             .m_name = ctx->Identifier()->toString(),
             .m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params())),
-            .m_return_type = any_cast<enum DataTypes>(visit(ctx->type_spec())),
+            .m_return_type = any_cast<std::string>(visit(ctx->type_spec())),
         });
     }
 
@@ -127,7 +129,7 @@ public:
             ret = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->param_list()));
         } else if (ctx->Void()) {
             ret.emplace_back(
-                make_shared<Expr>(Variable{.m_var_type = Void, .m_var_name = "<void>"}));
+                make_shared<Expr>(Variable{.m_var_type = "void", .m_var_name = "<void>"}));
         }
         return ret;
     }
@@ -144,7 +146,7 @@ public:
 
     std::any visitParam(CParser::ParamContext *ctx) override {
         return make_shared<Expr>(Variable{
-            .m_var_type = any_cast<enum DataTypes>(visit(ctx->type_spec())),
+            .m_var_type = any_cast<std::string>(visit(ctx->type_spec())),
             .m_var_name = ctx->Identifier()->toString(),
         });
     }
