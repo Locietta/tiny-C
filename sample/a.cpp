@@ -15,6 +15,8 @@ int fib(int n) {
         return fib(n - 1) + fib(n - 2);
 }
 
+int gcd(int a, int b);
+
 int main(void) {
     int sum = 100;
     // int i = 0;
@@ -33,5 +35,13 @@ int main(void) {
     }
 
     // foo(sum, sum);
-    return sum;
+    return gcd(sum, 120);
+}
+
+int gcd(int a, int b) {
+    if (b) {
+        return gcd(b, a % b);
+    } else {
+        return a;
+    }
 }

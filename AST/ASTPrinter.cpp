@@ -100,12 +100,17 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             }
             print2buf(")");
         },
-        [this](FuncDef const &func) {
-            print2buf(" (func:{}", func.m_name);
-            print2buf(" ret_type:{}", type_to_str[func.m_return_type]);
-            for (const auto &p_para : func.m_para_list) {
+        [this](FuncProto const &proto) {
+            print2buf(" (proto");
+            print2buf(" ret_type:{}", type_to_str[proto.m_return_type]);
+            for (const auto &p_para : proto.m_para_list) {
                 sexp_fmt(*p_para);
             }
+            print2buf(")");
+        },
+        [this](FuncDef const &func) {
+            print2buf(" (func:{}", func.getName());
+            sexp_fmt(*func.m_proto);
             sexp_fmt(*func.m_body);
             print2buf(")");
         },

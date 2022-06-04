@@ -49,11 +49,11 @@ int main(int argc, const char *argv[]) {
 
         auto dumpAST = [m_decls = visitor.m_decls, &output_dir, argv]() {
             for (int i = 0; const auto &decl : m_decls) {
-                assert(decl->is<FuncDef>() || decl->is<InitExpr>());
+                assert(decl->is<FuncDef>() || decl->is<InitExpr>() || decl->is<FuncProto>());
                 ASTPrinter decl_printer{decl};
                 fs::path pic_path{output_dir.c_str()};
                 if (decl->is<FuncDef>()) {
-                    pic_path.append(fmt::format("func:{}", decl->as<FuncDef>().m_name));
+                    pic_path.append(fmt::format("func:{}", decl->as<FuncDef>().getName()));
                 } else {
                     pic_path.append(fmt::format("global_decl{}", i++));
                 }

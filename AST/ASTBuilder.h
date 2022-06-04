@@ -89,19 +89,35 @@ public:
         }
     }
 
-    std::any visitFunc_decl(CParser::Func_declContext *ctx) override {
+    std::any visitFunc_def(CParser::Func_defContext *ctx) override {
         is_global = false;
 
         auto ret = make_shared<Expr>(FuncDef{
-            .m_name = ctx->Identifier()->toString(),
-            .m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params())),
+            .m_proto = expr_cast(visit(ctx->func_proto())),
             .m_body = expr_cast(visit(ctx->comp_stmt())),
-            .m_return_type = any_cast<enum DataTypes>(visit(ctx->type_spec())),
         });
 
         m_decls.push_back(ret);
         is_global = true;
-        return ret;
+        return move(ret);
+    }
+
+    std::any visitFunc_decl(CParser::Func_declContext *ctx) override {
+        auto ret = expr_cast(visit(ctx->func_proto()));
+        if (is_global) {
+            m_decls.push_back(move(ret));
+            return {};
+        }
+
+        return move(ret);
+    }
+
+    std::any visitFunc_proto(CParser::Func_protoContext *ctx) override {
+        return make_shared<Expr>(FuncProto{
+            .m_name = ctx->Identifier()->toString(),
+            .m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params())),
+            .m_return_type = any_cast<enum DataTypes>(visit(ctx->type_spec())),
+        });
     }
 
     std::any visitParams(CParser::ParamsContext *ctx) override {

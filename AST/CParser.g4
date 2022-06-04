@@ -74,7 +74,8 @@ prog: decl_list EOF;
 decl_list: decl*;
 
 decl: var_decl Semi 	# decl_var
-	| func_decl			# decl_func
+	| func_def			# decl_func
+	| func_decl         # decl_proto
 	;
 
 simple_var_decl:
@@ -96,8 +97,14 @@ type_spec:
 	| Void
 	| Struct Identifier; // struct type
 
+func_proto:
+	type_spec Identifier LeftParen params RightParen;
+
 func_decl:
-	type_spec Identifier LeftParen params RightParen comp_stmt;
+	func_proto Semi;
+
+func_def:
+	func_proto comp_stmt;
 
 params: param_list | (Void)?;
 

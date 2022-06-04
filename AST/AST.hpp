@@ -176,16 +176,23 @@ struct FuncCall {
     NameRef m_func_name;
 };
 
-struct FuncDef { // TODO: prototypes should be separated
+struct FuncProto {
     NameRef m_name;
     std::vector<std::shared_ptr<Expr>> m_para_list; // should put `Variable` here
-    std::shared_ptr<Expr> m_body;
     enum DataTypes m_return_type;
+    [[nodiscard]] std::string_view getName() const { return m_name; }
+};
+
+struct FuncDef {
+    std::shared_ptr<Expr> m_proto;
+    std::shared_ptr<Expr> m_body;
+    [[nodiscard]] std::string_view getName() const;
 };
 
 namespace impl { // Magic Base
-using Base = std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return,
-                          FuncCall, FuncDef, CompoundExpr, NameRef, Continue, Break, ForLoop, Null>;
+using Base =
+    std::variant<Variable, ConstVar, InitExpr, Unary, Binary, IfElse, WhileLoop, Return, FuncCall,
+                 FuncProto, FuncDef, CompoundExpr, NameRef, Continue, Break, ForLoop, Null>;
 }
 
 // dummy warpper for variant
@@ -202,7 +209,7 @@ struct Expr : public impl::Base {
         return std::holds_alternative<T>(*this);
     }
     template <typename T>
-    constexpr const T &as() const {
+    [[nodiscard]] constexpr const T &as() const {
         return std::get<T>(*this);
     }
     template <typename T>
@@ -210,3 +217,11 @@ struct Expr : public impl::Base {
         return std::get<T>(*this);
     }
 };
+
+// ------------------- Inline Methods Implementation ---------------------
+
+/// workaround forward declaration of Expr
+
+inline std::string_view FuncDef::getName() const {
+    return m_proto->as<FuncProto>().getName();
+}

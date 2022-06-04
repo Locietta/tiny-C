@@ -283,28 +283,37 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             }
             llvm_unreachable("Unsupported ConstVar type!");
         },
-        [&, this](FuncDef const &func_node) -> Value * {
-            Function *p_func = module.getFunction(func_node.m_name);
+        [&, this](FuncProto const &func_proto) -> Value * {
+            Function *p_func = module.getFunction(func_proto.m_name);
 
             if (!p_func) { // generate func proto if not exist
                 SmallVector<Type *> funcArgsTypes;
-                for (const auto &p_para : func_node.m_para_list) {
+                for (const auto &p_para : func_proto.m_para_list) {
                     const auto &para = p_para->as<Variable>();
                     if (para.m_var_type != Void) { // skip Void param
                         funcArgsTypes.push_back(getLLVMType(para.m_var_type));
                     }
                 }
-                Type *retType = getLLVMType(func_node.m_return_type);
+                Type *retType = getLLVMType(func_proto.m_return_type);
                 FunctionType *func_type = FunctionType::get(retType, funcArgsTypes, false);
                 p_func = Function::Create(func_type,
                                           Function::ExternalLinkage,
-                                          func_node.m_name,
+                                          func_proto.m_name,
                                           module);
+
+                for (size_t i = 0; auto &arg : p_func->args()) {
+                    arg.setName(func_proto.m_para_list[i++]->as<Variable>().m_var_name);
+                }
             }
 
             if (!p_func) { // somehow fail to generate func proto
-                throw_err("Failed to generate function prototype for `{}`\n", func_node.m_name);
+                throw_err("Failed to generate function prototype for `{}`\n", func_proto.m_name);
             }
+
+            return p_func;
+        },
+        [&, this](FuncDef const &func_node) -> Value * {
+            auto *p_func = cast<Function>(visitASTNode(*func_node.m_proto));
 
             // Create new basic block
             BasicBlock *entryBlock = BasicBlock::Create(context, "func_entry", p_func);
@@ -312,10 +321,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             scope_manager scope_mgr(symTable);
 
             for (auto &arg : p_func->args()) {
-                // AllocaInst *alloc = CreateEntryBlockAlloca(p_func, arg.getName(), arg.getType());
-                size_t argNo = arg.getArgNo();
-                Type *argType = p_func->getFunctionType()->getParamType(argNo);
-                StringRef argName = func_node.m_para_list[argNo]->as<Variable>().m_var_name;
+                Type *argType = arg.getType();
+                StringRef argName = arg.getName();
                 AllocaInst *alloc = builder.CreateAlloca(argType, nullptr, argName);
                 symTable.insert(argName, alloc);
                 builder.CreateStore(&arg, alloc);
@@ -441,6 +448,13 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                     return builder.CreateFDiv(lhs, rhs, "fdiv");
                 } else { // neither is float, so they're (signed) ints
                     return builder.CreateSDiv(lhs, rhs, "sidiv");
+                }
+            }
+            case Mod: {
+                if (is_f) {
+                    return builder.CreateFRem(lhs, rhs, "frem");
+                } else {
+                    return builder.CreateSRem(lhs, rhs, "srem");
                 }
             }
             case Equal: {
