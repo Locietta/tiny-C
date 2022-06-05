@@ -27,13 +27,13 @@ public:
     TypeTable(llvm::LLVMContext &ctx);
     ~TypeTable();
 
+    void insert(llvm::StringRef type_name, llvm::Type *type);
+
     llvm::Type *operator[](llvm::StringRef type_name) const {
         auto ret = SymbolTableMixin::operator[](type_name);
         if (ret == nullptr) throw_err("Unknown type name '{}'", type_name);
         return ret;
     }
-
-    static void addTypedef(TypeTable &typeTable, const Variable &var);
 };
 
 struct IRAnalysis {

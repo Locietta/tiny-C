@@ -137,7 +137,6 @@ struct IfElse {
     std::shared_ptr<Expr> m_else;
 };
 
-//> Every loop can be converted to while-loop
 struct WhileLoop {
     std::shared_ptr<Expr> m_condi;
     std::shared_ptr<Expr> m_loop_body;

@@ -50,24 +50,16 @@ TypeTable::~TypeTable() {
     pop_scope();
 }
 
-void TypeTable::addTypedef(TypeTable &typeTable, const Variable &var) {
-    Type *type = typeTable[var.m_var_type]; // throw if unknown type
-
-    if (var.m_var_init) { // typedef decl shouldn't have init...
-        throw_err("Illegal initializer for '{}' (only variables can be initialized)",
-                  var.m_var_name);
-    }
-
-    // refuse conflict redef, skip duplicate
-    if (typeTable.inCurrScope(var.m_var_name)) {
-        Type *previous_type = typeTable[var.m_var_name];
+void TypeTable::insert(llvm::StringRef type_name, llvm::Type *type) {
+    assert(!symbols.empty() && "No scope available for variable insertion!");
+    if (inCurrScope(type_name)) {
+        Type *previous_type = operator[](type_name);
         if (previous_type != type) {
-            throw_err("Typedef redefinition for '{}' with different types", var.m_var_name);
+            throw_err("Typedef redefinition for '{}' with different types", type_name);
         }
         return;
     }
-
-    typeTable.insert(var.m_var_name, type);
+    symbols.back().insert({type_name, type});
 }
 
 // ------------ Implementation of `IRGenerator` -------------------
@@ -220,12 +212,13 @@ void IRGenerator::codegen() {
             // global vars
             for (const auto &p_node : tree->as<InitExpr>()) {
                 const auto &var = p_node->as<Variable>();
+
+                Type *var_type = (*m_typeTable_ptr)[var.m_var_type];
                 if (var.m_storage == StorageSpec::TYPEDEF) {
-                    TypeTable::addTypedef(*m_typeTable_ptr, var);
+                    m_typeTable_ptr->insert(var.m_var_name, var_type);
                     continue;
                 }
 
-                Type *var_type = (*m_typeTable_ptr)[var.m_var_type];
                 auto *globalVar = cast<GlobalVariable>(
                     m_module_ptr->getOrInsertGlobal(var.m_var_name, var_type) //
                 );
@@ -302,6 +295,12 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                 }
                 Type *retType = typeTable[func_proto.m_return_type];
                 FunctionType *func_type = FunctionType::get(retType, funcArgsTypes, false);
+
+                if (func_proto.m_storage == StorageSpec::TYPEDEF) {
+                    typeTable.insert(func_proto.m_name, func_type);
+                    return nullptr;
+                }
+
                 p_func = Function::Create(func_type,
                                           Function::ExternalLinkage,
                                           func_proto.m_name,
@@ -319,6 +318,11 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             return p_func;
         },
         [&, this](FuncDef const &func_node) -> Value * {
+            if (func_node.m_proto->as<FuncProto>().m_storage == StorageSpec::TYPEDEF) {
+                throw_err("Function definition of '{}' declared 'typedef'",
+                          func_node.m_proto->as<FuncProto>().m_name);
+            }
+
             auto *p_func = cast<Function>(visitASTNode(*func_node.m_proto));
 
             // Create new basic block
@@ -371,21 +375,23 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             return nullptr;
         },
         [&, this](Variable const &var) -> Value * {
-            /// handle typedef
-            if (var.m_storage == StorageSpec::TYPEDEF) {
-                TypeTable::addTypedef(typeTable, var);
-                return nullptr;
-            }
-
             // check duplicate var def
             if (symTable.inCurrScope(var.m_var_name)) {
                 throw_err("Duplicate declaration of '{}'\n", var.m_var_name);
             }
 
+            // get llvm var type
             Type *var_type = typeTable[var.m_var_type];
+
+            /// handle typedef
+            if (var.m_storage == StorageSpec::TYPEDEF) {
+                typeTable.insert(var.m_var_name, var_type);
+                return nullptr;
+            }
+
             AllocaInst *p_new_var = builder.CreateAlloca(var_type, nullptr, var.m_var_name);
             if (!p_new_var) [[unlikely]] {
-                throw_err<std::runtime_error>("Interal compiler error: failed to allocate {}\n",
+                throw_err<std::runtime_error>("Interal compiler error: failed to allocate '{}'\n",
                                               var.m_var_name);
             }
 
