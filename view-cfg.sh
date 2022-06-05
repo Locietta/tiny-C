@@ -2,4 +2,4 @@
 
 opt --dot-cfg $1
 
-dot .gcd.dot -Tpng:cairo -o a.png
+dot .$2.dot -Tpng:cairo -o $2.png

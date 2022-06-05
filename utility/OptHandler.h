@@ -47,4 +47,21 @@ struct OptHandler : SilentDefaultOpts {
         llvm::cl::value_desc("dirname"),
         llvm::cl::init("output"),
     };
+
+    llvm::cl::opt<bool> emitCFG{
+        "emit-cfg",
+        llvm::cl::desc("Emit Control Flow Graphs for all functions"),
+    };
+
+    llvm::cl::alias emitCFG_short{
+        "C",
+        llvm::cl::desc("Alias for --emit-cfg"),
+        llvm::cl::aliasopt(emitCFG),
+        llvm::cl::NotHidden,
+    };
+
+    llvm::cl::opt<bool> debugSExpr{
+        "debug-sexpr",
+        llvm::cl::desc("Output S-expression of generated AST to stdout"),
+    };
 };

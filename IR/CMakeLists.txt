@@ -10,7 +10,8 @@ execute_process(COMMAND llvm-config --system-libs --libs all
     OUTPUT_VARIABLE llvm_libs)
 string(STRIP ${llvm_libs} llvm_libs)
 
-add_library(IR IRGenerator.cpp IRGenerator.h pass/DeadBlockRemove.cc pass/ASTSimplify.cc)
+aux_source_directory(pass PASS_SRCS)
+add_library(IR IRGenerator.cpp IRGenerator.h ${PASS_SRCS})
 target_include_directories(
     IR
     PRIVATE ${CMAKE_CURRENT_LIST_DIR}/pass

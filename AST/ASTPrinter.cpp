@@ -1,5 +1,6 @@
 #include "ASTPrinter.h"
 #include "AST.hpp"
+#include "OptHandler.h"
 #include "utility.hpp"
 #include <algorithm>
 #include <cstring>
@@ -21,6 +22,8 @@
 #define print2buf(fmt_str, ...) fmt::format_to(back_inserter(buffer), fmt_str, ##__VA_ARGS__)
 
 using namespace std;
+
+extern OptHandler cli_inputs;
 
 void ASTPrinter::sexp_fmt(const Expr &e) {
     match(
@@ -145,6 +148,9 @@ void ASTPrinter::ToPNG(fs::path const &exe_path, fs::path const &filename) {
                                   fmt::to_string(buffer),
                                   filename.c_str(),
                                   exe_path.parent_path().c_str());
-    dbg_print("{}\n", fmt::to_string(buffer));
+    if (cli_inputs.debugSExpr) {
+        dbg_print("{}\n", fmt::to_string(buffer));
+    }
+
     system(out.c_str());
 }

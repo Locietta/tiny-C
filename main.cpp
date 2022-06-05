@@ -40,13 +40,16 @@ int main(int argc, const char *argv[]) {
     ASTBuilder visitor;
     visitor.visit(tree);
 
-    if (cli_inputs.emitAST) {
-        const auto &output_dir = cli_inputs.pic_outdir;
+    const auto &output_dir = cli_inputs.pic_outdir;
+
+    if (cli_inputs.emitAST || cli_inputs.emitCFG) {
         fs::create_directory(output_dir.c_str());
         for (const auto &dir_entry : fs::directory_iterator{output_dir.c_str()}) {
             fs::remove_all(dir_entry);
         }
+    }
 
+    if (cli_inputs.emitAST) {
         auto dumpAST = [m_decls = visitor.m_decls, &output_dir, argv]() {
             for (int i = 0; const auto &decl : m_decls) {
                 assert(decl->is<FuncDef>() || decl->is<InitExpr>() || decl->is<FuncProto>());
@@ -65,7 +68,7 @@ int main(int argc, const char *argv[]) {
         auto _ = std::async(std::launch::async, dumpAST);
     }
 
-    IRGenerator builder{visitor.m_decls, cli_inputs.opt_level};
+    IRGenerator builder{visitor.m_decls};
     builder.codegen();
 
     std::string out_name;

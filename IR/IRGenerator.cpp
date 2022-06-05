@@ -1,10 +1,14 @@
 #include "IRGenerator.h"
 #include "AST.hpp"
 #include "ASTSimplify.h"
+#include "CFGDotPrinter.h"
 #include "DeadBlockRemove.h"
+#include "OptHandler.h"
 #include "utility.hpp"
 
 using namespace llvm;
+
+extern OptHandler cli_inputs;
 
 struct loop_BB_manager { // RAII loop basic block manager
     inline static BasicBlock *continueBB = nullptr, *breakBB = nullptr;
@@ -68,7 +72,7 @@ void TypeTable::addTypedef(TypeTable &typeTable, const Variable &var) {
 
 // ------------ Implementation of `IRGenerator` -------------------
 
-IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int opt_level)
+IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
     : m_simplifiedAST(trees), m_context_ptr(std::make_unique<llvm::LLVMContext>()),
       m_module_ptr(std::make_unique<llvm::Module>("tinycc JIT", *m_context_ptr)),
       m_builder_ptr(std::make_unique<llvm::IRBuilder<>>(*m_context_ptr)),
@@ -87,9 +91,16 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int op
     PB.registerLoopAnalyses(m_analysis->LAM);
     PB.crossRegisterProxies(m_analysis->LAM, m_analysis->FAM, m_analysis->CGAM, m_analysis->MAM);
 
-    if (opt_level) {
+    if (cli_inputs.emitCFG) {
+        PB.registerOptimizerLastEPCallback(
+            [&](ModulePassManager &MPM, PassBuilder::OptimizationLevel level) {
+                MPM.addPass(createModuleToFunctionPassAdaptor(CFGDotPrinterPass{}));
+            });
+    }
+
+    if (cli_inputs.opt_level) {
         m_optimizer = std::make_unique<ModulePassManager>(
-            PB.buildPerModuleDefaultPipeline(int2OptLevel(opt_level)));
+            PB.buildPerModuleDefaultPipeline(int2OptLevel(cli_inputs.opt_level)));
     } else { // disable opt: O0 isn't allowed by pipeline builder
         m_optimizer = std::make_unique<ModulePassManager>();
     }

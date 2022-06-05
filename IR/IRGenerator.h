@@ -46,7 +46,7 @@ struct IRAnalysis {
 class IRGenerator {
 public:
     IRGenerator() = delete;
-    IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int opt_level);
+    IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees);
 
     void codegen();
 
