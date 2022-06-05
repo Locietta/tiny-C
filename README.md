@@ -38,9 +38,12 @@ Color Options:
 
 General options:
 
+  -C                  - Alias for --emit-cfg
   -O=<int>            - Choose optimization level
   -a                  - Alias for --emit-ast
+  --debug-sexpr       - Output S-expression of generated AST to stdout
   --emit-ast          - Emit tree graph for all ASTs
+  --emit-cfg          - Emit Control Flow Graphs for all functions
   -o=<filename>       - Specify output filename
   --pic-dir=<dirname> - Specify output directory of pics, default to `output`
 
@@ -51,9 +54,7 @@ Generic Options:
   --version           - Display the version of this program
 ```
 
-For example, `tinycc a.c -O=1 -a` will produce optimized code including `a.ll`(LLVM IR code) and `a.o`(x86 machine code), and will generate AST graphs under `output` folder.
-
-Later you can also use `./view-cfg.sh a.ll` to view Control Flow Graph (CFG) of generated IR code.
+For example, `tinycc a.c -O=1 -a -C` will produce optimized code including `a.ll`(LLVM IR code) and `a.o`(x86 machine code), and will generate AST graphs and control flow graphs under `output` folder.
 
 ### Some Reference Links
 
