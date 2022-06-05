@@ -93,8 +93,9 @@ IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees)
     if (cli_inputs.opt_level) {
         m_optimizer = std::make_unique<ModulePassManager>(
             PB.buildPerModuleDefaultPipeline(int2OptLevel(cli_inputs.opt_level)));
-    } else { // disable opt: O0 isn't allowed by pipeline builder
-        m_optimizer = std::make_unique<ModulePassManager>();
+    } else { // disable opt: O0 isn't allowed by module default pipeline builder
+        m_optimizer = std::make_unique<ModulePassManager>(
+            PB.buildO0DefaultPipeline(PassBuilder::OptimizationLevel::O0));
     }
 }
 
