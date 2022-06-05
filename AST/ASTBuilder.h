@@ -10,8 +10,44 @@ inline auto expr_cast(std::any any) {
 }
 
 class ASTBuilder : public CParserBaseVisitor {
+private:
     using TerminalNode = antlr4::tree::TerminalNode;
     using ParseTreeType = antlr4::tree::ParseTreeType;
+
+    std::pair<std::string, enum StorageSpec>
+    parseDeclSpecs(std::vector<CParser::Decl_specContext *> const &specs) {
+        std::string type;
+        enum StorageSpec storage_spec = StorageSpec::NONE;
+
+        for (const auto &spec : specs) {
+            if (spec->storage_spec()) { // NOTE: refuse conflict storage specs, warn for duplicate
+                auto temp = any_cast<enum StorageSpec>(visit(spec->storage_spec()));
+                if (storage_spec == StorageSpec::NONE) {
+                    storage_spec = temp;
+                    continue;
+                }
+
+                if (storage_spec == temp) {
+                    fmt::print("warning: Duplicate '{}' declaration specifier\n",
+                               storage_to_str[temp]);
+                } else {
+                    throw_err("Cannot combine with previous '{}' declaration specifier",
+                              storage_to_str[storage_spec]);
+                }
+            } else if (spec->type_spec()) { // NOTE: refuse both duplicate and conflict type spec
+                if (!type.empty()) {
+                    throw_err("Cannot combine with previous '{}' declaration specifier", type);
+                }
+                type = any_cast<std::string>(visit(spec->type_spec()));
+            } else {
+                // something wrong?
+                assert(false);
+                unreachable();
+            }
+        }
+
+        return make_pair(move(type), storage_spec);
+    }
 
 public:
     // Top level declarations, vector of `FuncDef` or `InitExpr`
@@ -34,8 +70,7 @@ public:
                 } else if (hint == '\\') {
                     return ConstVar{'\\'};
                 } else {
-                    assert(false && "Unsupported escape sequence!");
-                    unreachable();
+                    throw_err("Unsupported escape sequence '\\{}'!", hint);
                 }
             }
         } else if (const_text.find('.') == std::string::npos) {
@@ -52,12 +87,19 @@ public:
         auto ret = make_shared<Expr>(InitExpr{});
         auto &curr_node = ret->as<InitExpr>(); // InitExpr curr_node;
 
-        auto type = any_cast<std::string>(visit(ctx->type_spec()));
+        auto &&[type, storage_spec] = parseDeclSpecs(ctx->decl_spec());
+
+        if (storage_spec == StorageSpec::NONE && is_global) {
+            // global var default to extern
+            storage_spec = StorageSpec::EXTERN;
+        }
+
         const auto &simple_var_decls = ctx->simple_var_decl();
 
         for (auto simple_var : simple_var_decls) {
             auto var = expr_cast(visit(simple_var))->as<Variable>();
             var.m_var_type = type;
+            var.m_storage = storage_spec;
             curr_node.push_back(make_shared<Expr>(move(var)));
         }
 
@@ -66,6 +108,22 @@ public:
             return {};
         } else {
             return move(ret);
+        }
+    }
+
+    // std::any visitDecl_spec(CParser::Decl_specContext *ctx) override {}
+
+    std::any visitStorage_spec(CParser::Storage_specContext *ctx) override {
+        if (ctx->Static()) {
+            return StorageSpec::STATIC;
+        } else if (ctx->Extern()) {
+            return StorageSpec::EXTERN;
+        } else if (ctx->Typedef()) {
+            return StorageSpec::TYPEDEF;
+        } else {
+            // something wrong?
+            assert(false);
+            unreachable();
         }
     }
 
@@ -115,10 +173,17 @@ public:
     }
 
     std::any visitFunc_proto(CParser::Func_protoContext *ctx) override {
+        auto &&[type, storage_spec] = parseDeclSpecs(ctx->decl_spec());
+        if (storage_spec == StorageSpec::NONE) {
+            // func storage default to extern
+            storage_spec = StorageSpec::EXTERN;
+        }
+
         return make_shared<Expr>(FuncProto{
+            .m_storage = storage_spec,
             .m_name = ctx->Identifier()->toString(),
             .m_para_list = any_cast<std::vector<std::shared_ptr<Expr>>>(visit(ctx->params())),
-            .m_return_type = any_cast<std::string>(visit(ctx->type_spec())),
+            .m_return_type = move(type),
         });
     }
 

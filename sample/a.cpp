@@ -19,8 +19,22 @@ int gcd(int a, int b);
 
 void output_int(int num);
 
+typedef int aaa;
+
+static int bar(int i, int j);
+
+// void nothing() {
+//     return;
+// }
+
 int main(void) {
     int sum = 100;
+
+    for (typedef int bbb; sum == 100; sum = sum + 1) {
+        bbb six = 6;
+        sum = sum + six;
+    }
+
     // int i = 0;
     // while (i < 100) {
     //     sum = sum + i;
@@ -28,8 +42,9 @@ int main(void) {
     //     break;
     //     i = i + 2;
     // }
+    // haha i = 1;
 
-    for (int i = 0; i < 100; i = i + 1) {
+    for (aaa i = 0; i < 100; i = i + 1) {
         for (int j = 0; j < 100; j = j + 1) {
             sum = foo(sum, 1);
             continue;

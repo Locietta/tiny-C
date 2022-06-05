@@ -39,6 +39,14 @@ enum Operators {
     // etc
 };
 
+enum StorageSpec {
+    NONE = 0,
+    EXTERN,
+    STATIC,
+    TYPEDEF,
+    enum_storage_count,
+};
+
 constexpr ConstexprMap<enum Operators, std::string_view, enum_op_count> op_to_str{
     {Plus, "+"},       {PlusPlus, "++"},   {Minus, "-"},         {MinusMinus, "--"},
     {Mul, "*"},        {Div, "/"},         {Mod, "%"},           {Equal, "=="},
@@ -48,10 +56,19 @@ constexpr ConstexprMap<enum Operators, std::string_view, enum_op_count> op_to_st
     {AndAnd, "&&"},    {Not, "!"},
 };
 
+constexpr ConstexprMap<enum StorageSpec, std::string_view, enum_storage_count> storage_to_str{
+    {NONE, "none"},
+    {EXTERN, "extern"},
+    {STATIC, "static"},
+    {TYPEDEF, "typedef"},
+};
+
 namespace static_check {
 
 constexpr auto check_map = []() { // magic: compile-time check
     static_assert(op_to_str.sz == enum_op_count, "Incomplete dispatch for op_enum->string map!");
+    static_assert(storage_to_str.sz == enum_storage_count,
+                  "Incomplete dispatch for storage_enum->string map!");
     return true; // no-use
 }();
 
@@ -90,6 +107,7 @@ using NameRef = std::string;
 
 struct Variable {
     std::string m_var_type;
+    enum StorageSpec m_storage;
     NameRef m_var_name;
     std::shared_ptr<Expr> m_var_init; // ConstVar
     // int m_array_size;   // if variable is not array, then size = 0
@@ -153,9 +171,11 @@ struct FuncCall {
 };
 
 struct FuncProto {
+    enum StorageSpec m_storage;
     NameRef m_name;
     std::vector<std::shared_ptr<Expr>> m_para_list; // should put `Variable` here
     std::string m_return_type;
+
     [[nodiscard]] std::string_view getName() const { return m_name; }
 };
 

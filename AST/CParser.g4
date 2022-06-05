@@ -86,7 +86,18 @@ simple_var_decl:
 //init_list: LeftBrace (Constant (Comma Constant)*)? RightBrace;
 
 var_decl:
-	type_spec simple_var_decl (Comma simple_var_decl)* ;
+	(decl_spec)* simple_var_decl (Comma simple_var_decl)* ;
+
+decl_spec
+	: storage_spec
+	| type_spec
+	;
+
+storage_spec:
+	Typedef
+	| Extern
+	| Static
+	;
 
 type_spec:
 	Char
@@ -100,7 +111,7 @@ type_spec:
 	;
 
 func_proto:
-	type_spec Identifier LeftParen params RightParen;
+	(decl_spec)* Identifier LeftParen params RightParen;
 
 func_decl:
 	func_proto Semi;

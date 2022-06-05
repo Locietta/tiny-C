@@ -46,6 +46,26 @@ TypeTable::~TypeTable() {
     pop_scope();
 }
 
+void TypeTable::addTypedef(TypeTable &typeTable, const Variable &var) {
+    Type *type = typeTable[var.m_var_type]; // throw if unknown type
+
+    if (var.m_var_init) { // typedef decl shouldn't have init...
+        throw_err("Illegal initializer for '{}' (only variables can be initialized)",
+                  var.m_var_name);
+    }
+
+    // refuse conflict redef, skip duplicate
+    if (typeTable.inCurrScope(var.m_var_name)) {
+        Type *previous_type = typeTable[var.m_var_name];
+        if (previous_type != type) {
+            throw_err("Typedef redefinition for '{}' with different types", var.m_var_name);
+        }
+        return;
+    }
+
+    typeTable.insert(var.m_var_name, type);
+}
+
 // ------------ Implementation of `IRGenerator` -------------------
 
 IRGenerator::IRGenerator(std::vector<std::shared_ptr<Expr>> const &trees, int opt_level)
@@ -189,7 +209,12 @@ void IRGenerator::codegen() {
             // global vars
             for (const auto &p_node : tree->as<InitExpr>()) {
                 const auto &var = p_node->as<Variable>();
-                auto var_type = (*m_typeTable_ptr)[var.m_var_type];
+                if (var.m_storage == StorageSpec::TYPEDEF) {
+                    TypeTable::addTypedef(*m_typeTable_ptr, var);
+                    continue;
+                }
+
+                Type *var_type = (*m_typeTable_ptr)[var.m_var_type];
                 auto *globalVar = cast<GlobalVariable>(
                     m_module_ptr->getOrInsertGlobal(var.m_var_name, var_type) //
                 );
@@ -335,8 +360,15 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             return nullptr;
         },
         [&, this](Variable const &var) -> Value * {
+            /// handle typedef
+            if (var.m_storage == StorageSpec::TYPEDEF) {
+                TypeTable::addTypedef(typeTable, var);
+                return nullptr;
+            }
+
+            // check duplicate var def
             if (symTable.inCurrScope(var.m_var_name)) {
-                throw_err("Duplicate declaration of `{}`\n", var.m_var_name);
+                throw_err("Duplicate declaration of '{}'\n", var.m_var_name);
             }
 
             Type *var_type = typeTable[var.m_var_type];

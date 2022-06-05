@@ -26,6 +26,14 @@ class TypeTable : public SymbolTableMixin<llvm::Type *> {
 public:
     TypeTable(llvm::LLVMContext &ctx);
     ~TypeTable();
+
+    llvm::Type *operator[](llvm::StringRef type_name) const {
+        auto ret = SymbolTableMixin::operator[](type_name);
+        if (ret == nullptr) throw_err("Unknown type name '{}'", type_name);
+        return ret;
+    }
+
+    static void addTypedef(TypeTable &typeTable, const Variable &var);
 };
 
 struct IRAnalysis {

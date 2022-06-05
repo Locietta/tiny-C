@@ -109,6 +109,10 @@ NotEqual: '!=';
 
 Dot: '.';
 
+Typedef: 'typedef';
+Extern: 'extern';
+Static: 'static';
+
 // ------------------------ ID: name of variables ------------------------
 Identifier: IdentifierNondigit ( IdentifierNondigit | Digit)*;
 
