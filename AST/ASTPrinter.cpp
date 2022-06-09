@@ -96,7 +96,11 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
         },
         [this](Return const &ret) {
             print2buf(" (return");
-            sexp_fmt(*ret.m_expr);
+            if (ret.m_expr == nullptr) {
+                print2buf(" [NULL]");
+            } else {
+                sexp_fmt(*ret.m_expr);
+            }
             print2buf(")");
         },
         [this](FuncCall const &call) {

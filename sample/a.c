@@ -23,9 +23,9 @@ typedef int aaa;
 
 static int bar(int i, int j);
 
-// void nothing() {
-//     return;
-// }
+void nothing() {
+    return;
+}
 
 int main(void) {
     int sum = 100;

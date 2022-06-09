@@ -271,8 +271,9 @@ public:
         auto ret = make_shared<Expr>(Return{});
         auto &curr_node = ret->as<Return>();
 
-        any return_value = visit(ctx->expr());
-        if (return_value.has_value()) curr_node.m_expr = expr_cast(return_value);
+        if (ctx->expr() != nullptr) {
+            curr_node.m_expr = expr_cast(visit(ctx->expr()));
+        }
 
         return ret;
     }
