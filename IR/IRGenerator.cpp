@@ -302,10 +302,11 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                     return nullptr;
                 }
 
-                p_func = Function::Create(func_type,
-                                          Function::ExternalLinkage,
-                                          func_proto.m_name,
-                                          module);
+                GlobalValue::LinkageTypes linkage = (func_proto.m_storage == STATIC)
+                                                        ? Function::InternalLinkage
+                                                        : Function::ExternalLinkage;
+
+                p_func = Function::Create(func_type, linkage, func_proto.m_name, module);
 
                 for (size_t i = 0; auto &arg : p_func->args()) {
                     arg.setName(func_proto.m_para_list[i++]->as<Variable>().m_var_name);
@@ -331,6 +332,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             builder.SetInsertPoint(entryBlock);
             scope_manager scope_mgr(*this);
 
+            // params
             for (auto &arg : p_func->args()) {
                 Type *argType = arg.getType();
                 StringRef argName = arg.getName();

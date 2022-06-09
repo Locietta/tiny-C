@@ -11,9 +11,9 @@ int input_int() {
 }
 
 void output_int(int num) {
-    printf("%d", num);
+    printf("%d\n", num);
 }
 
 void output_char(char ch) {
-    printf("%c", ch);
+    printf("%c\n", ch);
 }

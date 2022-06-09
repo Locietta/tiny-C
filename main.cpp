@@ -85,5 +85,7 @@ int main(int argc, const char *argv[]) {
 
     builder.emitOBJ(fmt::format("{}.o", out_name));
 
+    system(fmt::format("clang {}.o mystdlib/libmystd.a -o {}", out_name, out_name).c_str());
+
     return 0;
 }

@@ -30,18 +30,18 @@ static int bar(int i, int j);
 int main(void) {
     int sum = 100;
 
-    for (typedef int bbb; sum == 100; sum = sum + 1) {
-        bbb six = 6;
-        sum = sum + six;
-    }
-
-    // int i = 0;
-    // while (i < 100) {
-    //     sum = sum + i;
-    //     i = i + 1;
-    //     break;
-    //     i = i + 2;
+    // for (typedef int bbb; sum == 100; sum = sum + 1) {
+    //     bbb six = 6;
+    //     sum = sum + six;
     // }
+
+    int i = 0;
+    while (i < 100) {
+        sum = sum + i;
+        i = i + 1;
+        continue;
+        i = i + 2;
+    }
     // haha i = 1;
 
     for (aaa i = 0; i < 100; i = i + 1) {

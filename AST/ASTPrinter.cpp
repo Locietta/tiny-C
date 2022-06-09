@@ -107,7 +107,7 @@ void ASTPrinter::sexp_fmt(const Expr &e) {
             print2buf(")");
         },
         [this](FuncProto const &proto) {
-            print2buf(" (proto");
+            print2buf(" (proto:{}", proto.m_name);
             print2buf(" storage:{}", storage_to_str[proto.m_storage]);
             print2buf(" ret_type:{}", proto.m_return_type);
             for (const auto &p_para : proto.m_para_list) {
