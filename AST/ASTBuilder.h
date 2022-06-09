@@ -136,6 +136,8 @@ public:
             return "long"s;
         } else if (ctx->Float()) {
             return "float"s;
+        } else if (ctx->Double()) {
+            return "double"s;
         } else if (ctx->Short()) {
             return "short"s;
         } else if (ctx->Void()) {

@@ -17,7 +17,8 @@ int fib(int n) {
 
 int gcd(int a, int b);
 
-void output_int(int num);
+extern void output_int(int num);
+extern void output_fp(double num);
 
 typedef int aaa;
 
@@ -50,6 +51,10 @@ int main(void) {
             continue;
         }
     }
+
+    double f = 1.0;
+
+    output_fp(f);
 
     // foo(sum, sum);
     output_int(gcd(sum, 120));

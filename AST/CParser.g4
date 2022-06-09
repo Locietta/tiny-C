@@ -105,6 +105,7 @@ type_spec:
 	| Long
 	| Float
 	| Short
+	| Double
 	| Void
 	| Struct Identifier // struct type
 	| Identifier

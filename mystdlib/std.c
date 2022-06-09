@@ -17,3 +17,7 @@ void output_int(int num) {
 void output_char(char ch) {
     printf("%c\n", ch);
 }
+
+void output_fp(double f) {
+    printf("%f\n", f);
+}
