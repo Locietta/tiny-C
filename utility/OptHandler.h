@@ -64,4 +64,12 @@ struct OptHandler : SilentDefaultOpts {
         "debug-sexpr",
         llvm::cl::desc("Output S-expression of generated AST to stdout"),
     };
+
+    llvm::cl::opt<std::string> gcc_lib_version{
+        "gcc-lib-version",
+        llvm::cl::desc(
+            "Specify the version gcc, used for linker to link the gcc lib. Default to 12.1.0"),
+        llvm::cl::value_desc("version"),
+        llvm::cl::init("12.1.0"),
+    };
 };
