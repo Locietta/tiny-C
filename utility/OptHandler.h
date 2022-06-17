@@ -35,7 +35,7 @@ struct OptHandler : SilentDefaultOpts {
     };
 
     llvm::cl::alias emitAST_short{
-        "a",
+        "A",
         llvm::cl::desc("Alias for --emit-ast"),
         llvm::cl::aliasopt(emitAST),
         llvm::cl::NotHidden,

@@ -38,9 +38,9 @@ Color Options:
 
 General options:
 
+  -A                  - Alias for --emit-ast
   -C                  - Alias for --emit-cfg
   -O=<int>            - Choose optimization level
-  -a                  - Alias for --emit-ast
   --debug-sexpr       - Output S-expression of generated AST to stdout
   --emit-ast          - Emit tree graph for all ASTs
   --emit-cfg          - Emit Control Flow Graphs for all functions
