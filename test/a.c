@@ -30,7 +30,7 @@ void nothing() {
 
 int main(void) {
     int sum = 100;
-
+    // yy = 100;
     // for (typedef int bbb; sum == 100; sum = sum + 1) {
     //     bbb six = 6;
     //     sum = sum + six;
