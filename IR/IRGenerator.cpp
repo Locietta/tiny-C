@@ -224,7 +224,7 @@ void IRGenerator::codegen() {
                     m_module_ptr->getOrInsertGlobal(var.m_var_name, var_type) //
                 );
                 if (var.m_var_init) {
-                    auto init = cast<Constant>(visitASTNode(*var.m_var_init));
+                    auto init = cast<Constant>(codegenVisitor(*var.m_var_init));
                     if (init->getType() != var_type) {
                         throw_err("Unmatched initializer type for global var:{}\n", var.m_var_name);
                     }
@@ -233,7 +233,7 @@ void IRGenerator::codegen() {
             }
         } else {
             // a func
-            visitASTNode(*tree);
+            codegenVisitor(*tree);
         }
     }
 
@@ -262,7 +262,7 @@ Value *IRGenerator::boolCast(Value *val) { // NOTE: ad-hoc bool cast
     return val;
 }
 
-Value *IRGenerator::visitASTNode(const Expr &expr) {
+Value *IRGenerator::codegenVisitor(const Expr &expr) {
     auto &context = *m_context_ptr;
     auto &module = *m_module_ptr;
     auto &builder = *m_builder_ptr;
@@ -325,7 +325,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
                           func_node.m_proto->as<FuncProto>().m_name);
             }
 
-            auto *p_func = cast<Function>(visitASTNode(*func_node.m_proto));
+            auto *p_func = cast<Function>(codegenVisitor(*func_node.m_proto));
 
             // Create new basic block
             BasicBlock *entryBlock = BasicBlock::Create(context, "func_entry", p_func);
@@ -342,7 +342,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             }
 
             // codegen for func body
-            visitASTNode(*func_node.m_body);
+            codegenVisitor(*func_node.m_body);
 
             // verification
             verifyFunction(*p_func);
@@ -352,7 +352,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
         [&, this](CompoundExpr const &comp) -> Value * {
             scope_manager scope_mgr(*this);
             for (const auto &p_expr : comp) {
-                visitASTNode(*p_expr);
+                codegenVisitor(*p_expr);
             }
             return nullptr;
         },
@@ -373,7 +373,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
         },
         [this](InitExpr const &var_decls) -> Value * {
             for (const auto &p_var_decl : var_decls) {
-                visitASTNode(*p_var_decl);
+                codegenVisitor(*p_var_decl);
             }
             return nullptr;
         },
@@ -403,7 +403,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // init var if needed
             if (var.m_var_init) {
-                Value *init_val = visitASTNode(*var.m_var_init);
+                Value *init_val = codegenVisitor(*var.m_var_init);
                 builder.CreateStore(init_val, p_new_var);
             }
 
@@ -414,7 +414,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
             // if (!parent_func) throw_err("Return statement outside func?");
             ReturnInst *ret;
             if (retExpr.m_expr) {
-                ret = builder.CreateRet(visitASTNode(*retExpr.m_expr));
+                ret = builder.CreateRet(codegenVisitor(*retExpr.m_expr));
             } else {
                 ret = builder.CreateRetVoid();
             }
@@ -439,7 +439,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             std::vector<Value *> ArgsV;
             for (const auto &para : func_call.m_para_list) {
-                auto argVal = visitASTNode(*para);
+                auto argVal = codegenVisitor(*para);
                 if (!argVal) {
                     throw_err("Null argument when calling function {}", func_call.m_func_name);
                 }
@@ -450,8 +450,8 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
         },
         [&, this](Binary const &exp) -> Value * {
             // refactor? builder.CreateBinOp(llvm::BinaryOperator::Add);
-            Value *lhs = visitASTNode(*exp.m_operand1);
-            Value *rhs = visitASTNode(*exp.m_operand2);
+            Value *lhs = codegenVisitor(*exp.m_operand1);
+            Value *rhs = codegenVisitor(*exp.m_operand2);
             if (!lhs) throw_err("null left oprand for {} operation?", op_to_str[exp.m_operator]);
             if (!rhs) throw_err("null right oprand for {} operation?", op_to_str[exp.m_operator]);
 
@@ -553,7 +553,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
              *      ...
              */
 
-            Value *cond_val = visitASTNode(*exp.m_condi);
+            Value *cond_val = codegenVisitor(*exp.m_condi);
             if (!cond_val) throw_err("Null condition expr for if-else statement!");
 
             cond_val = boolCast(cond_val);
@@ -567,11 +567,11 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // then branch
             emitBlock(thenBB);
-            visitASTNode(*exp.m_if);
+            codegenVisitor(*exp.m_if);
 
             // else branch
             emitBlock(elseBB);
-            if (exp.m_else) visitASTNode(*exp.m_else);
+            if (exp.m_else) codegenVisitor(*exp.m_else);
 
             // exit if, don't emit if unreachable
             emitBlock(mergeBB, true);
@@ -597,7 +597,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
              *      ...
              */
 
-            Value *cond_val = visitASTNode(*while_loop.m_condi);
+            Value *cond_val = codegenVisitor(*while_loop.m_condi);
             if (!cond_val) throw_err("Null condition expr for loop statement!");
             cond_val = boolCast(cond_val);
 
@@ -611,11 +611,11 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // loop header (body)
             emitBlock(loopBB);
-            visitASTNode(*while_loop.m_loop_body);
+            codegenVisitor(*while_loop.m_loop_body);
 
             // latch
             emitBlock(latchBB);
-            cond_val = visitASTNode(*while_loop.m_condi);
+            cond_val = codegenVisitor(*while_loop.m_condi);
             if (!cond_val) throw_err("Null condition expr for loop statement!");
             cond_val = boolCast(cond_val);
             builder.CreateCondBr(cond_val, loopBB, loopEndBB);
@@ -643,7 +643,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // codegen for init expr
             scope_manager scope_mgr(*this); // the var defined here shouldn't leak out of loop
-            if (for_loop.m_init) visitASTNode(*for_loop.m_init);
+            if (for_loop.m_init) codegenVisitor(*for_loop.m_init);
 
             // create for loop blocks
             auto *loopBB = BasicBlock::Create(context, "loop");
@@ -653,7 +653,7 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // loop entry
             if (for_loop.m_condi) {
-                Value *cond_val = visitASTNode(*for_loop.m_condi);
+                Value *cond_val = codegenVisitor(*for_loop.m_condi);
                 if (!cond_val) throw_err("Null condition expr for loop statement!");
                 cond_val = boolCast(cond_val);
                 builder.CreateCondBr(cond_val, loopBB, loopEndBB);
@@ -663,15 +663,15 @@ Value *IRGenerator::visitASTNode(const Expr &expr) {
 
             // loop header (body)
             emitBlock(loopBB);
-            visitASTNode(*for_loop.m_loop_body);
+            codegenVisitor(*for_loop.m_loop_body);
 
             // latch
             emitBlock(latchBB);
             if (for_loop.m_iter) {
-                visitASTNode(*for_loop.m_iter);
+                codegenVisitor(*for_loop.m_iter);
             }
             if (for_loop.m_condi) {
-                Value *cond_val = visitASTNode(*for_loop.m_condi);
+                Value *cond_val = codegenVisitor(*for_loop.m_condi);
                 if (!cond_val) throw_err("Null condition expr for loop statement!");
                 cond_val = boolCast(cond_val);
                 builder.CreateCondBr(cond_val, loopBB, loopEndBB);

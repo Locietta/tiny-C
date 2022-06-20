@@ -56,7 +56,7 @@ public:
     void emitOBJ(fs::path const &asm_path);
 
 private:
-    llvm::Value *visitASTNode(const Expr &expr);
+    llvm::Value *codegenVisitor(const Expr &expr);
     llvm::Value *boolCast(llvm::Value *val);
 
     void emitBlock(llvm::BasicBlock *BB, bool IsFinished = false);
